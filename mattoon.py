@@ -1,10 +1,24 @@
-import pygame,time,sys,ctypes,math
-from ctypes import POINTER, WINFUNCTYPE, windll
-from ctypes.wintypes import BOOL, HWND, RECT
+import pygame,time,sys,ctypes,math,os
 from pygame.locals import *
 
+WINDOWS =  os.name == "nt"
+if WINDOWS:
+  from ctypes import POINTER, WINFUNCTYPE, windll
+  from ctypes.wintypes import BOOL, HWND, RECT
 
-#obama flipper/pngs arent transparent cause theyre on a surface...
+
+#TODO:
+#WALLS:
+  #just make them colors, maybe make a func to generate all the walls upon room change and use the limited screen.blit ????
+
+#PUT MATTOON DOOR THING
+  #add a sign that says "Mr Mattoon's room" and stuff, then mr mattoon pops out and says "thats me!"
+    #PUT DOWN A LONG HALLWAY NOW
+  #go into door to talk to mr mattoon
+  #maybe the ending whetr you make him mad = screen starts filling with lava ?
+#Add minimap?
+#add small map with interactable things and finally award somewhere
+
 
 
 #---------------------------- funcs ----------------------------
@@ -40,6 +54,7 @@ def title(thi):
   pygame.display.set_caption(thi)
 
 def windowpos():
+  if not WINDOWS: return
   prototype = WINFUNCTYPE(BOOL, HWND, POINTER(RECT))
   paramflags = (1, "hwnd"), (2, "lprect")
 
@@ -52,6 +67,7 @@ def screensize(size,size2):
   screen = pygame.display.set_mode((size,size2))
 
 def move_window(x, y):
+  if not WINDOWS: return
   hwnd = pygame.display.get_wm_info()["window"]
   
   user32 = ctypes.windll.user32
@@ -69,7 +85,7 @@ objects = [] #append all showable entities to me!!!!!!!
 
 def obs():
   for i in objects:
-    show(i.image, i.pos) 
+    show(i.image, i.pos)
     
 def fill(color,default=screen): #can take RGB too?
   default.fill(color)
@@ -209,6 +225,13 @@ flip = ''
 you = Player(pimgs["down"], 8)
 objects.append(you)
 
+#MATTOON IMAGES
+mimgs = {"lean": img("MATLEAN"), "pfp":img("MATPFP"), "stare":img("MATSTARE"), "sup":img("MATSUP")}
+mattoon = entity(mimgs["lean"])
+curmat = 0
+def changemattoon():
+  global curmat
+  pass  #CMERE
 def PIMG(thing):
   global pCUR, flip
   if pCUR == thing or thing == flip: return
