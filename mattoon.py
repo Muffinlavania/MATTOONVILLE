@@ -81,10 +81,11 @@ WIDTH = 1280
 def show(thing,where=(0,0),thingnightingi=None):
   screen.blit(thing,where,thingnightingi) #3rd arg used for cutoffs
 
-objects = [] #append all showable entities to me!!!!!!!
+objects = {"home": [], '2nd' : []} #append all showable entities to me!!!!!!!
+PLACE = 'home'
 
 def obs():
-  for i in objects:
+  for i in objects[PLACE]:
     show(i.image, i.pos)
     
 def fill(color,default=screen): #can take RGB too?
@@ -223,15 +224,21 @@ for ind,i in enumerate(pimgs):
 pCUR = "down"
 flip = ''
 you = Player(pimgs["down"], 8)
-objects.append(you)
+for i in objects:
+  objects[i].append(you)
 
 #MATTOON IMAGES
-mimgs = {"lean": img("MATLEAN"), "pfp":img("MATPFP"), "stare":img("MATSTARE"), "sup":img("MATSUP")}
+mimgs = {"lean":img("MATLEAN.png"), "pfp":img("MATPFP.jpg"), "stare":img("MATSTARE.png"), "sup":img("MATSUP.png")}
 mattoon = entity(mimgs["lean"])
 curmat = 0
+
+objects[PLACE].append(mattoon)
+
 def changemattoon():
-  global curmat
-  pass  #CMERE
+  global curmat,mattoon
+  curmat = 0 if curmat == 3 else curmat+1
+  mattoon.image = mimgs[list(mimgs.keys())[curmat]]
+
 def PIMG(thing):
   global pCUR, flip
   if pCUR == thing or thing == flip: return
@@ -242,10 +249,17 @@ def PIMG(thing):
     flip = ''
     pCUR = thing if thing != '' else pCUR
     you.image = pimgs[pCUR]
-    
-    
-    
-    
+
+def wall(size, coord = (0,0), colo = (0,0,0)):
+  global objects
+  NEW = entity(pygame.Surface(size),coord)
+  NEW.image.fill(colo)
+  objects[PLACE].append(NEW)
+
+for SIZE,COR in zip([(100,200),(300,300)] , [(0,0),(1280-300,0)]):
+  wall(SIZE,COR)
+
+
 clock = pygame.time.Clock()
 
 
@@ -277,6 +291,8 @@ while True:
   elif k[pygame.K_LEFT] or k[pygame.K_a]:
     you.move(left=True)
     PIMG("f")
+  elif k[pygame.K_0]:
+    changemattoon()
     
   if (k[pygame.K_o] or k[pygame.K_p]):
     HEIGHT+=3 if k[pygame.K_p] else -3
@@ -285,7 +301,7 @@ while True:
   
   
   check_events()
-      
+  
   up() #passing nothing = full screen update
   lag_time = clock.tick(fps) / 1000 #fps = time since last frame (1 = its fine, can be used in frame dependant animation?)
   
