@@ -167,20 +167,38 @@ class entity:
     self.height = self.image.get_height()
     self.pos = image.get_rect().move(starting_cords[0], starting_cords[1])
     self.width = self.image.get_width()
-    
+  def changeimage(self,image):
+    self.image = image
+    self.height = self.image.get_height()
+    self.width = self.image.get_width()
+    self.pos = image.get_rect().move(self.pos.left,self.pos.top)
 disable_time = 0 #set this to a second value or something and update every tick, to disable movement!!!
 
 class Player:
   def __init__(self, image, speed):
     self.speed = speed
-    entity.__init__(self,image) #yoinky sploinky entity
+    self.touched = False
+    entity.__init__(self,image) #yoinky sploinky entitoinky
   
   def move(self, up=False, down=False, left=False, right=False):
     if disable_time<=0:
+      self.OLD = (self.pos.right,self.pos.top)
+
       if right: self.pos.right += self.speed
       elif left: self.pos.right -= self.speed
       if down: self.pos.top += self.speed
       elif up: self.pos.top -= self.speed
+      
+      #out of bounds
+      t = False
+      for i in objects[PLACE]:
+        if i!=self and touching(self,i):
+          t = True
+          self.touched = True
+          self.pos.right = self.OLD[0]
+          self.pos.top = self.OLD[1]
+      
+      self.touched = t
       
       if self.pos.right > WIDTH:
           self.pos.right = WIDTH
@@ -191,12 +209,20 @@ class Player:
       if self.pos.top < 0:
           self.pos.top = 0
 
-def touching(thing1:entity,thing2:entity,paddingtop=0,paddingsides=0): #both entites/players
-  right = thing2.pos.right<thing1.pos.right-paddingsides and thing2.pos.right>thing1.pos.right-thing1.width+paddingsides
-  left = thing2.pos.left>thing1.pos.left+paddingsides and thing2.pos.left<thing1.pos.left+thing1.width-paddingsides
-  top = thing2.pos.top>thing1.pos.top+paddingtop and thing2.pos.top<thing1.pos.top+thing1.height-paddingtop
-  bottom = thing2.pos.bottom<thing1.pos.bottom and thing2.pos.bottom>thing1.pos.bottom-thing1.height+paddingtop
-  return  (right or left) and (top or bottom)
+def touching(MOVER:entity,WALL:entity,paddingtop=0,paddingsides=0): #both entites/players
+  T1 = WALL.pos
+  T2 = MOVER.pos
+
+  right = T2.right < T1.right-paddingsides and  T2.right > T1.left+paddingsides
+  left = T2.left > T1.left+paddingsides and     T2.left < T1.right-paddingsides
+  top = T2.top > T1.top+paddingtop and          T2.top < T1.bottom-paddingtop
+  bottom = T2.bottom < T1.bottom-paddingtop and T2.bottom > T1.top + paddingtop
+
+  for i in [right,left]:
+    for j in [top,bottom]:
+      if i and j: return True
+
+  return False
 
 
 
@@ -229,7 +255,7 @@ for i in objects:
 
 #MATTOON IMAGES
 mimgs = {"lean":img("MATLEAN.png"), "pfp":img("MATPFP.jpg"), "stare":img("MATSTARE.png"), "sup":img("MATSUP.png")}
-mattoon = entity(mimgs["lean"])
+mattoon = entity(mimgs["lean"],(500,0))
 curmat = 0
 
 objects[PLACE].append(mattoon)
@@ -237,7 +263,7 @@ objects[PLACE].append(mattoon)
 def changemattoon():
   global curmat,mattoon
   curmat = 0 if curmat == 3 else curmat+1
-  mattoon.image = mimgs[list(mimgs.keys())[curmat]]
+  mattoon.changeimage(mimgs[list(mimgs.keys())[curmat]])
 
 def PIMG(thing):
   global pCUR, flip
@@ -255,9 +281,13 @@ def wall(size, coord = (0,0), colo = (0,0,0)):
   NEW = entity(pygame.Surface(size),coord)
   NEW.image.fill(colo)
   objects[PLACE].append(NEW)
+  return NEW
 
-for SIZE,COR in zip([(100,200),(300,300)] , [(0,0),(1280-300,0)]):
-  wall(SIZE,COR)
+
+#MAKING WALLS, find walls
+wall1 = ''
+for SIZE,COR in zip([(200,200)] , [(300,200)]):
+  wall1 = wall(SIZE,COR, (255, 115, 115))
 
 
 clock = pygame.time.Clock()
@@ -266,7 +296,7 @@ clock = pygame.time.Clock()
 
 
 #----------------------------------- MAIN GAMEEEEEEEEEE -----------------------------------
-
+pygame.init()
 while True:
   frame+=1
   
@@ -274,9 +304,9 @@ while True:
   backing = color(colour,WIDTH,HEIGHT)
   show(backing,(0,0))
   obs()
-  
-  #text = pygame.font.Font('FILES/determination.ttf', 32).render(f'R\T to drink petroleum, O\P to control the world [fps:{lagS}]', True, (0,255,0))
-  
+
+  #text = pygame.font.Font(file('determination.ttf'), 32).render(f'{[left,right,top,bottom]}', True, (0,255,0))
+  #show(text)
   k = pygame.key.get_pressed()
     
   if k[pygame.K_UP] or k[pygame.K_w]:
