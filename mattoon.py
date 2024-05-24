@@ -8,6 +8,10 @@ if WINDOWS:
 
 
 #TODO:
+#HITBOXES WORK, SCREEN CHANGING WORKS!!!!
+#START MAKING HIS HOUSE, INTERACTIBLES??? (add names???)
+
+
 #WALLS:
   #just make them colors, maybe make a func to generate all the walls upon room change and use the limited screen.blit ????
 
@@ -81,8 +85,29 @@ WIDTH = 1280
 def show(thing,where=(0,0),thingnightingi=None):
   screen.blit(thing,where,thingnightingi) #3rd arg used for cutoffs
 
+
+#-------------------------- MAKING THE MAP STUFF COME HERE find map --------------------------------------
 objects = {"home": [], '2nd' : []} #append all showable entities to me!!!!!!!
 PLACE = 'home'
+LOCERS = [0,0]
+
+MAPPINGs = [
+ ['home'],
+ ['2nd']
+]
+
+
+
+
+def nextplace(dir):
+  global LOCERS,PLACE
+  p2 = PLACE
+  if dir in ['up','down']:
+    LOCERS[0] += -1 if dir=='up' and LOCERS[0] > 0 else 1 if dir=='down' and LOCERS[0]!=len(MAPPINGs)-1 else 0
+  else:
+    LOCERS[1] += -1 if dir=='left' and LOCERS[1] != 0 else 1 if dir=='right' and LOCERS[1]!=len(MAPPINGs[LOCERS[1]])-1 else 0
+  PLACE = MAPPINGs[LOCERS[0]][LOCERS[1]]
+  return p2 != PLACE
 
 def obs():
   for i in objects[PLACE]:
@@ -201,13 +226,13 @@ class Player:
       self.touched = t
       
       if self.pos.right > WIDTH:
-          self.pos.right = WIDTH
+          self.pos.right = WIDTH if not nextplace('right') else self.width
       if self.pos.right < self.width:
-          self.pos.right = self.width
-      if self.pos.top > HEIGHT-self.height:
-          self.pos.top = HEIGHT-self.height
+          self.pos.right = self.width if not nextplace('left') else WIDTH
+      if self.pos.top > HEIGHT-self.height: #SWITCH THE SCREENS!!!!
+          self.pos.top = HEIGHT-self.height if not nextplace('down') else 0
       if self.pos.top < 0:
-          self.pos.top = 0
+          self.pos.top = 0 if not nextplace('up') else HEIGHT-self.height
 
 def touching(MOVER:entity,WALL:entity,paddingtop=0,paddingsides=0): #both entites/players
   T1 = WALL.pos
@@ -255,6 +280,8 @@ for i in objects:
 
 #MATTOON IMAGES
 mimgs = {"lean":img("MATLEAN.png"), "pfp":img("MATPFP.jpg"), "stare":img("MATSTARE.png"), "sup":img("MATSUP.png")}
+for i in mimgs:
+  mimgs[i] = scale(mimgs[i], (300, 300))
 mattoon = entity(mimgs["lean"],(500,0))
 curmat = 0
 
@@ -276,18 +303,28 @@ def PIMG(thing):
     pCUR = thing if thing != '' else pCUR
     you.image = pimgs[pCUR]
 
-def wall(size, coord = (0,0), colo = (0,0,0)):
+def wall(size, coord = (0,0), colo = (0,0,0), PLACE = PLACE):
   global objects
-  NEW = entity(pygame.Surface(size),coord)
+  NEW = entity(pygame.Surface(size) if type(size) != str else img(size),coord)
   NEW.image.fill(colo)
   objects[PLACE].append(NEW)
   return NEW
 
 
 #MAKING WALLS, find walls
-wall1 = ''
-for SIZE,COR in zip([(200,200)] , [(300,200)]):
-  wall1 = wall(SIZE,COR, (255, 115, 115))
+
+toMAKE = { #size, coords, color, place
+  1:[(200,200),(300,200),(255, 115, 115), 'home'],
+  2:[(320, 180), (500,500), (96, 199, 28), '2nd'],
+  3:[],
+  4:[],
+  5:[],
+  6:[],
+}
+
+for i in toMAKE.values():
+  if i!=[]:
+    wall(i[0],i[1],i[2],i[3])
 
 
 clock = pygame.time.Clock()
