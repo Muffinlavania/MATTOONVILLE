@@ -7,9 +7,12 @@ if WINDOWS:
   from ctypes.wintypes import BOOL, HWND, RECT
 
 
-#TODO:
 #HITBOXES WORK, SCREEN CHANGING WORKS!!!!
-#START MAKING HIS HOUSE, INTERACTIBLES??? (add names???)
+#MADE THE WALL AND DOOR, CAN INTERACT WITH SIGN
+#TODO:
+#TEXT BOX CUTSCENES, SIGN/DOOR CUTSCENE
+#START ADDING OTHER SCREENS, MINIMAP????
+  #START MAKING ENDINGS, WE NEED A BOSS
 
 
 #WALLS:
@@ -36,9 +39,7 @@ def sleep(tim=1000):
   li = list(i for i in range(5,500,5) if tim/i < 50)[0] #.01% chance this errors
   tim1 = time.time()
   for _ in range(round(li)):
-    key = pygame.key.get_pressed() #so it doesnt say unresponsive lol
-    if key[pygame.K_v]:
-      print(time.time()-tim1)
+    pygame.key.get_pressed() #so it doesnt say unresponsive lol
     check_events()
     pygame.time.delay(round(tim/li))
   
@@ -77,7 +78,7 @@ def move_window(x, y):
   user32 = ctypes.windll.user32
   user32.SetWindowPos(hwnd, 0, x, y, 0, 0, 0x0001)  # 0x0001 is SWP_NOSIZE flag
 
-screensize(1280,720)
+screensize(1280,720) #find screensize, find size
 HEIGHT = 720
 WIDTH = 1280
 
@@ -110,11 +111,19 @@ def nextplace(dir):
   return p2 != PLACE
 
 def obs():
+  tI = sorted([i.pos.top for i in objects[PLACE]])
+  Objects = [0]*len(tI)
   for i in objects[PLACE]:
+    g = tI.index(i.pos.top)
+    Objects.insert(g,i)
+    Objects.pop(Objects.index(0,g))
+
+  for i in Objects:
     show(i.image, i.pos)
     
 def fill(color,default=screen): #can take RGB too?
   default.fill(color)
+
 
 def up(thing=False):
   """Pass in either a pygame.Rect(x,y,width,height) or x,y,image"""
@@ -124,8 +133,9 @@ def up(thing=False):
     pygame.display.update(thing if type(thing) == pygame.rect.Rect else pygame.Rect(thing[0],thing[1],thing[2].get_width(),thing[2].get_height()))
 
 #------- img things -------
-def img(name):
-  return pygame.image.load(file(name))
+def img(name, size_cors = ""):
+  x = pygame.image.load(file(name))
+  return x if size_cors == '' else scale(x,size_cors)
 
 def color(colo,wid=WIDTH,hei=HEIGHT):
   surf = pygame.Surface((wid,hei))
@@ -187,11 +197,12 @@ class Sound:
     pygame.mixer.Sound.play(s)
   
 class entity:
-  def __init__(self, image, starting_cords = (0,0)):
+  def __init__(self, image, starting_cords = (0,0), name = 'def'):
     self.image = image
     self.height = self.image.get_height()
     self.pos = image.get_rect().move(starting_cords[0], starting_cords[1])
     self.width = self.image.get_width()
+    self.name = name
   def changeimage(self,image):
     self.image = image
     self.height = self.image.get_height()
@@ -200,10 +211,10 @@ class entity:
 disable_time = 0 #set this to a second value or something and update every tick, to disable movement!!!
 
 class Player:
-  def __init__(self, image, speed):
+  def __init__(self, image, speed, starting_cords = (0,0), name = "def"):
     self.speed = speed
     self.touched = False
-    entity.__init__(self,image) #yoinky sploinky entitoinky
+    entity.__init__(self,image,starting_cords) #yoinky sploinky entitoinky
   
   def move(self, up=False, down=False, left=False, right=False):
     if disable_time<=0:
@@ -235,6 +246,10 @@ class Player:
           self.pos.top = 0 if not nextplace('up') else HEIGHT-self.height
 
 def touching(MOVER:entity,WALL:entity,paddingtop=0,paddingsides=0): #both entites/players
+  if WALL.name != 'wall' and paddingtop != 'pass': return
+
+  if paddingtop == 'pass': paddingtop = 0
+
   T1 = WALL.pos
   T2 = MOVER.pos
 
@@ -245,7 +260,7 @@ def touching(MOVER:entity,WALL:entity,paddingtop=0,paddingsides=0): #both entite
 
   for i in [right,left]:
     for j in [top,bottom]:
-      if i and j: return True
+      if i and j: return (WALL.name)
 
   return False
 
@@ -274,7 +289,7 @@ for ind,i in enumerate(pimgs):
     
 pCUR = "down"
 flip = ''
-you = Player(pimgs["down"], 8)
+you = Player(pimgs["down"], 8, (1280/2,300))
 for i in objects:
   objects[i].append(you)
 
@@ -282,7 +297,7 @@ for i in objects:
 mimgs = {"lean":img("MATLEAN.png"), "pfp":img("MATPFP.jpg"), "stare":img("MATSTARE.png"), "sup":img("MATSUP.png")}
 for i in mimgs:
   mimgs[i] = scale(mimgs[i], (300, 300))
-mattoon = entity(mimgs["lean"],(500,0))
+mattoon = entity(mimgs["lean"],(0,200))
 curmat = 0
 
 objects[PLACE].append(mattoon)
@@ -303,28 +318,90 @@ def PIMG(thing):
     pCUR = thing if thing != '' else pCUR
     you.image = pimgs[pCUR]
 
-def wall(size, coord = (0,0), colo = (0,0,0), PLACE = PLACE):
+
+#-- - - - -- - - - - - -- cutsceneing stuff --- -- - - - - - - - - - - - - - -
+
+def addme(thing: entity, PLACE = PLACE):
   global objects
-  NEW = entity(pygame.Surface(size) if type(size) != str else img(size),coord)
-  NEW.image.fill(colo)
-  objects[PLACE].append(NEW)
+  objects[PLACE].append(thing)
+
+def textbox(text:str): #max of 60
+  container = [entity(box((1000,300),(0,0,0)), (140,375), "txt"), entity(box((980,280), (255,255,255)), (150,385), "txt2")]
+
+
+  #this is an infinite loop, come here
+  text = text.split(" ")
+  t2 = ""
+  y = 340
+
+  while (text != []):
+    while (len(t2) < 55 and text != []):
+      t2 += text.pop(0)+" "
+
+    container.append(entity(pygame.font.Font(file('determination.ttf'), 40).render(t2, True, (0,0,0)), (160,(y:=y+50)), "txt3"))
+    
+
+
+  for i in container:
+    addme(i, PLACE)
+
+def AWARD():#award cutscne
+  pass
+
+def SIGN(): #sign cutscene
+  print("SIGNED")
+
+def DOOR(): #door cutscene
+  print("DOOR")
+interactibles = {'sign':SIGN,'award':AWARD, 'door': DOOR}
+INT_ME = []
+def interact(): #for interacting!!
+  for i in INT_ME:
+    if touching(you, i, 'pass'):
+      interactibles[i.name]()
+
+def box(size, color):
+  e = pygame.Surface(size)
+  e.fill(color)
+  return e
+
+def wall(size, coord = (0,0), colo = (0,0,0), PLACE = PLACE, name = 'wall'):
+  global INT_ME
+  NEW = entity(box(size, colo) if type(size) != pygame.Surface else size,coord,name)
+  addme(NEW, PLACE)
+  if any(i==name for i in interactibles):
+    INT_ME.append(NEW)
   return NEW
 
 
 #MAKING WALLS, find walls
 
-toMAKE = { #size, coords, color, place
-  1:[(200,200),(300,200),(255, 115, 115), 'home'],
-  2:[(320, 180), (500,500), (96, 199, 28), '2nd'],
-  3:[],
-  4:[],
-  5:[],
-  6:[],
-}
+toMAKE = [ #size (can be img), coords, color (unused if size is img), place, name (wall = hitbox, NA = no hitbox [decor])
+  [img("door_closed.jpeg",(480,202)),(400,-2),(20, 20, 20), 'home', 'door'],
+  [(480,183),(400,-3),(20, 20, 20), 'home', 'wall'],
+  [(520,201),(0,-1),(224, 219, 215), 'home', 'wall'],
+  [(520,201),(1280-520,-1),(224, 219, 215), 'home', 'wall'],
+  [(60,200),(120,0),(214, 209, 205), 'home', 'NA'],
+  [(60,200),(1280-180,0),(214, 209, 205), 'home', 'NA'],
+  [(60,200),(180,0),(200, 196, 191), 'home', 'NA'],
+  [(60,200),(1280-240,0),(200, 196, 191), 'home', 'NA'],
+  [(60,200),(240,0),(185, 181, 176), 'home', 'NA'],
+  [(60,200),(1280-300,0),(185, 181, 176), 'home', 'NA'],
+  [(60,200),(300,0),(200, 196, 191), 'home', 'NA'],
+  [(60,200),(1280-360,0),(200, 196, 191), 'home', 'NA'],
+  [(60,200),(360,0),(214, 209, 205), 'home', 'NA'],
+  [(60,200),(1280-420,0),(214, 209, 205), 'home', 'NA'],
+  [img("sign.png",(100,100)),(1280-520,220),(214, 209, 205), 'home', 'sign'],
+  [(320, 180), (500,500), (96, 199, 28), '2nd',' wall'],
+  [],
+  [],
+  [],
+  [],
+]
 
-for i in toMAKE.values():
+for i in toMAKE:
   if i!=[]:
-    wall(i[0],i[1],i[2],i[3])
+    wall(i[0],i[1],i[2],i[3],i[4])
 
 
 clock = pygame.time.Clock()
@@ -333,6 +410,7 @@ clock = pygame.time.Clock()
 
 
 #----------------------------------- MAIN GAMEEEEEEEEEE -----------------------------------
+title("Mr Mattoonville")
 pygame.init()
 while True:
   frame+=1
@@ -342,8 +420,6 @@ while True:
   show(backing,(0,0))
   obs()
 
-  #text = pygame.font.Font(file('determination.ttf'), 32).render(f'{[left,right,top,bottom]}', True, (0,255,0))
-  #show(text)
   k = pygame.key.get_pressed()
     
   if k[pygame.K_UP] or k[pygame.K_w]:
@@ -360,6 +436,10 @@ while True:
     PIMG("f")
   elif k[pygame.K_0]:
     changemattoon()
+  elif k[pygame.K_z]:
+    interact()
+  elif k[pygame.K_v]:
+    textbox("hello hows it going you doing wel muffin man wading wow huh i did do i need a break yes i do need a breka and now herfen this wshould work ")
     
   if (k[pygame.K_o] or k[pygame.K_p]):
     HEIGHT+=3 if k[pygame.K_p] else -3
