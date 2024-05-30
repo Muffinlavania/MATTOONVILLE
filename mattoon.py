@@ -36,7 +36,7 @@ def file(name):
 
 def sleep(tim=1000):
   tim = round(tim,-1)
-  li = list(i for i in range(5,500,5) if tim/i < 50)[0] #.01% chance this errors
+  li = list(i for i in range(5,500,5) if tim/i < 50)[0] if tim>=50 else 1 #.01% chance this errors
   tim1 = time.time()
   for _ in range(round(li)):
     pygame.key.get_pressed() #so it doesnt say unresponsive lol
@@ -87,7 +87,7 @@ def show(thing,where=(0,0),thingnightingi=None):
   screen.blit(thing,where,thingnightingi) #3rd arg used for cutoffs
 
 
-#-------------------------- MAKING THE MAP STUFF COME HERE find map --------------------------------------
+#-------------------------- MAKING THE MAP STUFF find map --------------------------------------
 objects = {"home": [], '2nd' : []} #append all showable entities to me!!!!!!!
 PLACE = 'home'
 LOCERS = [0,0]
@@ -129,6 +129,8 @@ def up(thing=False):
   """Pass in either a pygame.Rect(x,y,width,height) or x,y,image"""
   if not thing:
     pygame.display.update()
+    show(backing,(0,0))
+    obs()
   else:
     pygame.display.update(thing if type(thing) == pygame.rect.Rect else pygame.Rect(thing[0],thing[1],thing[2].get_width(),thing[2].get_height()))
 
@@ -270,6 +272,7 @@ def touching(MOVER:entity,WALL:entity,paddingtop=0,paddingsides=0): #both entite
 #------------------------------------------------------------- start actual stuff -------------------------------------------------------------
 
 colour=(160,132,173)
+backing = color(colour,WIDTH,HEIGHT)
 fps = 60
 frame = 0
 
@@ -325,31 +328,48 @@ def addme(thing: entity, PLACE = PLACE):
   global objects
   objects[PLACE].append(thing)
 
-def textbox(text:str): #max of 60
+def delme(thing: entity, PLACE = PLACE):
+  global objects
+  if thing in objects[PLACE]:
+    objects[PLACE].remove(thing)
+
+def text(text:str, slep = 30, afterwait = 2000): #max of 60
+  text = text.replace('\n',' \n')
+  text += " " #stitch fixes
   container = [entity(box((1000,300),(0,0,0)), (140,375), "txt"), entity(box((980,280), (255,255,255)), (150,385), "txt2")]
 
+  for i in container: addme(i,PLACE)
+  
+  font = pygame.font.Font(file('determination.ttf'), 40)
 
-  #this is an infinite loop, come here
-  text = text.split(" ")
   t2 = ""
   y = 340
 
-  while (text != []):
-    while (len(t2) < 55 and text != []):
-      t2 += text.pop(0)+" "
+  while len(text) > 0:
+    t2 = ""
+    curt = entity(font.render("", True, (0,0,0)), (160,(y:=y+50)), "txt3")
+    container.append(curt)
+    addme(curt, PLACE)
+    while len(text) > 0 and (len(t2) < 55 or text[0]==" ") and text[0] != '\n':
+      t2 += text[0]
+      text = text[1:]
+      curt.image = font.render(t2, True, (0,0,0))
+      up()
+      sleep(slep)
+    if len(text) > 0 and text[0] == '\n':
+      sleep(slep*9)
+      text = text[1:]
+  sleep(afterwait)
+  
+  for i in container: delme(i, PLACE)
+  up()
 
-    container.append(entity(pygame.font.Font(file('determination.ttf'), 40).render(t2, True, (0,0,0)), (160,(y:=y+50)), "txt3"))
-    
-
-
-  for i in container:
-    addme(i, PLACE)
 
 def AWARD():#award cutscne
   pass
 
 def SIGN(): #sign cutscene
-  print("SIGNED")
+  text("the sign reads:\nMATTOONS HOUSE", 25, 1000)
 
 def DOOR(): #door cutscene
   print("DOOR")
@@ -415,10 +435,6 @@ pygame.init()
 while True:
   frame+=1
   
-  #background
-  backing = color(colour,WIDTH,HEIGHT)
-  show(backing,(0,0))
-  obs()
 
   k = pygame.key.get_pressed()
     
@@ -439,7 +455,7 @@ while True:
   elif k[pygame.K_z]:
     interact()
   elif k[pygame.K_v]:
-    textbox("hello hows it going you doing wel muffin man wading wow huh i did do i need a break yes i do need a breka and now herfen this wshould work ")
+    text("hello hows it going you doing wel muffin man wading wow huh i did do i need a break yes i do need a breka and now herfen this wshould work ")
     
   if (k[pygame.K_o] or k[pygame.K_p]):
     HEIGHT+=3 if k[pygame.K_p] else -3
