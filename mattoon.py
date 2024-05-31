@@ -128,9 +128,9 @@ def fill(color,default=screen): #can take RGB too?
 def up(thing=False):
   """Pass in either a pygame.Rect(x,y,width,height) or x,y,image"""
   if not thing:
-    pygame.display.update()
     show(backing,(0,0))
     obs()
+    pygame.display.update()
   else:
     pygame.display.update(thing if type(thing) == pygame.rect.Rect else pygame.Rect(thing[0],thing[1],thing[2].get_width(),thing[2].get_height()))
 
@@ -334,8 +334,6 @@ def delme(thing: entity, PLACE = PLACE):
     objects[PLACE].remove(thing)
 
 def text(text:str, slep = 30, afterwait = 2000): #max of 60
-  text = text.replace('\n',' \n')
-  text += " " #stitch fixes
   container = [entity(box((1000,300),(0,0,0)), (140,375), "txt"), entity(box((980,280), (255,255,255)), (150,385), "txt2")]
 
   for i in container: addme(i,PLACE)
@@ -370,6 +368,13 @@ def AWARD():#award cutscne
 
 def SIGN(): #sign cutscene
   text("the sign reads:\nMATTOONS HOUSE", 25, 1000)
+  met = entity(pygame.transform.rotate(img("MATSUP.png",(250,250)),-5),(500,10))
+  addme(met)
+  up()
+  #door sound,door open png
+  sleep(2000)
+  text("THATS ME!")
+  delme(met)
 
 def DOOR(): #door cutscene
   print("DOOR")
