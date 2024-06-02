@@ -162,7 +162,7 @@ def selectfill(img, r=0, g=0, b=0):
   for x in range(img.get_width()):
     for y in range(img.get_height()):
       a = img.get_at((x, y)) #r,g,b,a <- we get a
-      img.set_at((x, y), pygame.Color(a[0] + r if a[0] + r<255 else 255, a[1] + g if a[1] + g < 255 else 255, a[2] + b if a[2] + b < 255 else 255, a[3])) #set things
+      img.set_at((x, y), pygame.Color(a[0] + r if 0<a[0] + r<255 else 255 if a[0]+r>=255 else 0, a[1] + g if 0<a[1] + g < 255 else 255 if a[1]+g>=255 else 0, a[2] + b if 0<a[2] + b < 255 else 255 if a[2]+b >= 255 else 0, a[3])) #set things
   return img
 
 def grayscale(img):
@@ -200,6 +200,14 @@ class Music:
   def stop():
     pygame.mixer.music.stop()
   
+  @staticmethod
+  def pause():
+    pygame.mixer.music.pause()
+
+  @staticmethod
+  def unpause():
+    pygame.mixer.music.unpause()
+
   @staticmethod
   def volume(vol):
     pygame.mixer.music.set_volume(vol)
@@ -368,6 +376,7 @@ def text(text:str, slep = 30, afterwait = 2000, delete = True, selet = '', voice
     if len(text) > 0 and text[0] == '\n':
       sleep(slep*9)
       text = text[1:]
+  up()
   sleep(afterwait)
   
   if delete:
@@ -387,7 +396,7 @@ def SIGN(): #sign cutscene
   change("door",img("door_open.jpg", (480,202)))
   up()
   sleep(1000)
-  text("THATS ME!")
+  text("THATS ME!", 30, 2000, True, '', False) #mat voice
   Sound.play("doorslam.mp3")
   delme(met)
   change("door",img("door_closed.jpeg", (480,202)))
@@ -403,7 +412,7 @@ def sel(max):
     k = pygame.key.get_pressed()
     check_events()
 
-    if k[pygame.K_SPACE]:
+    if k[pygame.K_z]:
       return "enter"
     if k[pygame.K_w] or k[pygame.K_UP]:
       selector = selector-1 if selector > 1 else max
@@ -438,14 +447,25 @@ def fadeinto(nextscreen, fadetime = 2000, waittime = 1000, back = False):
     up()
     sleep(ti)
   objects[PLACE].remove(blek)
-  
+
+mission, hasmilk,anoynum = False, False, 1
+annoy = ["can i have money","can i have a selfie","can i skip class pls","can i have kidneys pls"]
+
+annoyresponses = [(("no are you just annoying or something",30,3000,False),("please scram",30,3000,False)),(("i know im cool but stop bugging me", 30, 3000, False),("youre not so slowly getting on my nerves okay", 30, 3000, False)),(("dude at this rate you should i dont get paid enough to deal with you", 30, 3000, False), ("if you come back here one more time and ask for something stupid you won't like whats next.", 30, 5000, False), ("for your own sake, forget your annoying side.",30, 4000, False)),(("....", 30, 2000, False), ("your talking privilages have been revoked.", 30, 3000, False),("bring me back my award. just find it. do not come back unless you have it. if you do, I have warned you enough for you to deserve what is coming. now go.", 40, 4000, False))]
+#each response is a list of text options in a list
+#mat voice
+def goodending():
+  pass
 
 def DOOR(): #door cutscene, TALK WITH MATTOON?
-  global objects,backing,cutsceneing,firstime,selector,selectormax
+  global objects,backing,cutsceneing,firstime,selector, mission,anoynum
   cutsceneing = True
+  DEATH = anoynum == 4 and not hasmilk
   g = objects[PLACE].copy()
   matt = entity(mimgs["stare"],(1280-500-400, 0))
-  backing = color((145, 91, 55),WIDTH,HEIGHT)
+  if DEATH:
+    matt.image = selectfill(matt.image,-100,-100,-100)
+  backing = color((145, 91, 55) if not DEATH else (90,26,0),WIDTH,HEIGHT)
   objects[PLACE] = []
   up()
 
@@ -456,16 +476,30 @@ def DOOR(): #door cutscene, TALK WITH MATTOON?
     text("how exciting...")
     text("suddenly you hear footsteps...")
     sleep(500)
-    
-  Music.play("musika.mp3", .3, -1, 10000)
-  
+  if not DEATH:
+    #Music.play("musika.mp3", .3, -1, 10000)
+    pass
+
   addme(matt)
   for i in range(1,256,2 if firstime else 6):
     matt.image.set_alpha(i)
     up()
     sleep(40 if firstime else 25)
 
-  sleep(500 if firstime else 0)
+  sleep(500 if firstime else 3000 if DEATH else 0)
+
+  if DEATH:
+    text("...")
+    text("does it make you happy?\nnot listening, not caring.", 30, 1000)#mat voice
+    text("you know what youve done, I wont be bothered to repeat it.", 30, 1000)#mat voice
+    text("good luck.") #mat voice
+    fadeinto(g, 1000, 500, color((0,0,0),WIDTH,HEIGHT))
+    up()
+    return
+  elif anoynum == 4:
+    text("woah you actually got it") #mat voice
+    text("you were an inch away from death but now that i have my award its ok")#mat voice
+    goodending()
 
   selector = 1
   texters = []
@@ -473,20 +507,68 @@ def DOOR(): #door cutscene, TALK WITH MATTOON?
   if firstime:
     firstime = False
 
-    text("whats good?",30,1000)
-    texters = text("whats good?\n[Space to select, Arrow Keys to move selection]\n1 nothin\n2 idk",0,0,False, selector)
-    up()
+    text("whats good bro?",30,500) #mat voice
+    texters = text("whats good bro?\n[Z to select, Arrow Keys to move selection]\n1 nothin\n2 idk",0,0,False, selector)
     while sel(2)!='enter':
       delme(texters)
-      texters = text("whats good?\n1 nothin\n2 idk",0,200,False, selector)
-      up()
+      texters = text("whats good bro?\n[Z to select, Arrow Keys to move selection]\n1 nothin\n2 idk",0,100,False, selector)
+    delme(texters)
+    text("well thats cool but anyway") #mat voice
+  selector = 1
+
+  if not mission:
+    for i in 'i':
+      text("what do you want?", 30, 500) #mat voice
+      texters = text("what do you want?\n1 nothing what do you want\n2 "+annoy[anoynum]+"\n3 leave",0,0,False, selector)
+      while sel(3)!='enter':
+        delme(texters)
+        texters = text("what do you want?\n1 nothing what do you want\n2 "+annoy[anoynum]+"\n3 leave",0,100,False, selector)
+      delme(texters)
+      if selector == 3: continue
+      if selector == 1:
+        text("actually thanks for asking")#mat voice
+        text("i won this award but the person who gave it to me just kinda wasnt there")#mat voice
+        text("since you kind of look like him, can you get it for me? i think its somewhere south of here, youll probably be able to figure it out.")#mat voice
+        text("that was rhetorical by the way thank you youre going to get it for me bye")
+        mission = True
+      if selector == 2:
+        if anoynum == 3:
+          Music.fadeout(1000)
+          sleep(1000)
+        
+        for i in annoyresponses[anoynum]:
+          if 'for your own sake' in i[0]: Music.pause()
+          text(i[0],i[1],i[2],True,"",i[3])
+          Music.unpause()
+        anoynum += 1
+  else:
+    text("hey did you get my award yet?", 30, 500) #mat voice
+    texters = text("hey did you get my award yet?\n1 yep\n2 nerp",0,0,False, selector)
+    while sel(2)!='enter':
+      delme(texters)
+      texters = text("hey did you get my award yet?\n1 yep\n2 nerp",0,100,False, selector)
+    delme(texters)
+    if selector == 1:
+      if hasmilk:
+        text("no way bro it looks so shiny thank you") #mat voice
+        text("i wont forget this but ill never tell anyone about this for some reason") #mat voice
+        goodending()
+      else:
+        text("im not even annoyed just disappointed") #mat voice
+    else:
+      if hasmilk:
+        text("oh yeah that big yellow shiny thing you have is not my award alright tell me when you get it") #mat voice
+      else:
+        text("ok")#mat voice
+
+    
 
 
-  for i in texters:
-    objects[PLACE].remove(i)
+
+
   
   Music.fadeout(2000)
-  fadeinto(g, 1000, 500, color(colour,WIDTH,HEIGHT))
+  fadeinto(g, 1000, 0, color(colour,WIDTH,HEIGHT))
   up()
 
 
