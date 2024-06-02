@@ -31,8 +31,8 @@ if WINDOWS:
 #---------------------------- funcs ----------------------------
 
 #------ main things ---------
-def file(name):
-  return "MATTOONVILLE/"+name
+def file(name, vc = False):
+  return ("MATTOONVILLE/" if not vc else "MATVCS/")+name
 
 def sleep(tim=1000):
   if tim==0: return
@@ -118,7 +118,13 @@ def obs():
     g = tI.index(i.pos.top)
     Objects.insert(g,i)
     Objects.pop(Objects.index(0,g))
-
+    
+  for i in Objects: 
+    if i.name=='blek': 
+      Objects.remove(i) 
+      Objects.append(i)
+      break
+      
   for i in Objects:
     show(i.image, i.pos)
     
@@ -178,11 +184,17 @@ def needed(AMO,start):
 #--------------------- classes ----------------------------------
 class Music:
   @staticmethod
-  def play(name, volume = 1, loops = 0):
+  def play(name, volume = 1, loops = -1, fadetime =0):
     """Set loops to -1 for inf"""
     pygame.mixer.music.load(file(name))
     pygame.mixer.music.set_volume(volume)
-    pygame.mixer.music.play(loops)
+    pygame.mixer.music.play(loops, 0, fadetime)
+  
+  @staticmethod
+  def fadeout(time):
+    pygame.mixer.fadeout(time)
+    Music.stop()
+    
   
   @staticmethod
   def stop():
@@ -330,7 +342,8 @@ def change(name:str, img: pygame.Surface):
     if i.name == name:
       i.image = img
 
-def text(text:str, slep = 30, afterwait = 2000, delete = True, selet = ''): #max of 60
+def text(text:str, slep = 30, afterwait = 2000, delete = True, selet = '', voiceline = False): #max of 60
+  if voiceline: Sound.play(file(voiceline, True))
   container = [entity(box((1000,300),(0,0,0)), (140,375), "txt"), entity(box((980,280), (255,255,255)), (150,385), "txt2")]
 
   for i in container: addme(i,PLACE)
@@ -372,7 +385,6 @@ def SIGN(): #sign cutscene
   met = entity(pygame.transform.rotate(img("MATSUP.png",(250,250)),-5),(500,10))
   addme(met)
   change("door",img("door_open.jpg", (480,202)))
-  Sound.play("dooropen.mp3")
   up()
   sleep(1000)
   text("THATS ME!")
@@ -406,6 +418,28 @@ mimgs = {"lean":img("MATLEAN.png", (500,500)), "pfp":img("MATPFP.jpg", (500,500)
 cutsceneing = False
 firstime = True
 
+
+def fadeinto(nextscreen, fadetime = 2000, waittime = 1000, back = False):
+  global objects,backing
+  '''Fades the entire screen into the next one'''
+  blek = entity(box((1300,800), (0,0,0)),(-1,-10),"blek")
+  objects[PLACE].append(blek)
+  ti = round(fadetime/51)-5 
+  for i in range(0,256,5):
+    blek.image.set_alpha(i)
+    up()
+    sleep(ti)
+  sleep(waittime)
+  if back: backing = back
+  objects[PLACE] = nextscreen
+  objects[PLACE].append(blek)
+  for i in range(255,-1,-5):
+    blek.image.set_alpha(i)
+    up()
+    sleep(ti)
+  objects[PLACE].remove(blek)
+  
+
 def DOOR(): #door cutscene, TALK WITH MATTOON?
   global objects,backing,cutsceneing,firstime,selector,selectormax
   cutsceneing = True
@@ -422,7 +456,9 @@ def DOOR(): #door cutscene, TALK WITH MATTOON?
     text("how exciting...")
     text("suddenly you hear footsteps...")
     sleep(500)
-
+    
+  Music.play("musika.mp3", .3, -1, 10000)
+  
   addme(matt)
   for i in range(1,256,2 if firstime else 6):
     matt.image.set_alpha(i)
@@ -432,6 +468,7 @@ def DOOR(): #door cutscene, TALK WITH MATTOON?
   sleep(500 if firstime else 0)
 
   selector = 1
+  texters = []
   
   if firstime:
     firstime = False
@@ -445,10 +482,12 @@ def DOOR(): #door cutscene, TALK WITH MATTOON?
       up()
 
 
-
-  objects[PLACE] = g
+  for i in texters:
+    objects[PLACE].remove(i)
+  
+  Music.fadeout(2000)
+  fadeinto(g, 1000, 500, color(colour,WIDTH,HEIGHT))
   up()
-  backing = color(colour,WIDTH,HEIGHT)
 
 
 interactibles = {'sign':SIGN,'award':AWARD, 'door': DOOR}
