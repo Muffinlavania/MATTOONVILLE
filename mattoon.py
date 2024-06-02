@@ -35,6 +35,7 @@ def file(name):
   return "MATTOONVILLE/"+name
 
 def sleep(tim=1000):
+  if tim==0: return
   tim = round(tim,-1)
   li = list(i for i in range(5,500,5) if tim/i < 50)[0] if tim>=50 else 1 #.01% chance this errors
   tim1 = time.time()
@@ -210,7 +211,6 @@ class entity:
     self.height = self.image.get_height()
     self.width = self.image.get_width()
     self.pos = image.get_rect().move(self.pos.left,self.pos.top)
-disable_time = 0 #set this to a second value or something and update every tick, to disable movement!!!
 
 class Player:
   def __init__(self, image, speed, starting_cords = (0,0), name = "def"):
@@ -219,33 +219,32 @@ class Player:
     entity.__init__(self,image,starting_cords) #yoinky sploinky entitoinky
   
   def move(self, up=False, down=False, left=False, right=False):
-    if disable_time<=0:
-      self.OLD = (self.pos.right,self.pos.top)
+    self.OLD = (self.pos.right,self.pos.top)
 
-      if right: self.pos.right += self.speed
-      elif left: self.pos.right -= self.speed
-      if down: self.pos.top += self.speed
-      elif up: self.pos.top -= self.speed
-      
-      #out of bounds
-      t = False
-      for i in objects[PLACE]:
-        if i!=self and touching(self,i):
-          t = True
-          self.touched = True
-          self.pos.right = self.OLD[0]
-          self.pos.top = self.OLD[1]
-      
-      self.touched = t
-      
-      if self.pos.right > WIDTH:
-          self.pos.right = WIDTH if not nextplace('right') else self.width
-      if self.pos.right < self.width:
-          self.pos.right = self.width if not nextplace('left') else WIDTH
-      if self.pos.top > HEIGHT-self.height: #SWITCH THE SCREENS!!!!
-          self.pos.top = HEIGHT-self.height if not nextplace('down') else 0
-      if self.pos.top < 0:
-          self.pos.top = 0 if not nextplace('up') else HEIGHT-self.height
+    if right: self.pos.right += self.speed
+    elif left: self.pos.right -= self.speed
+    if down: self.pos.top += self.speed
+    elif up: self.pos.top -= self.speed
+    
+    #out of bounds
+    t = False
+    for i in objects[PLACE]:
+      if i!=self and touching(self,i):
+        t = True
+        self.touched = True
+        self.pos.right = self.OLD[0]
+        self.pos.top = self.OLD[1]
+    
+    self.touched = t
+    
+    if self.pos.right > WIDTH:
+        self.pos.right = WIDTH if not nextplace('right') else self.width
+    if self.pos.right < self.width:
+        self.pos.right = self.width if not nextplace('left') else WIDTH
+    if self.pos.top > HEIGHT-self.height: #SWITCH THE SCREENS!!!!
+        self.pos.top = HEIGHT-self.height if not nextplace('down') else 0
+    if self.pos.top < 0:
+        self.pos.top = 0 if not nextplace('up') else HEIGHT-self.height
 
 def touching(MOVER:entity,WALL:entity,paddingtop=0,paddingsides=0): #both entites/players
   if WALL.name != 'wall' and paddingtop != 'pass': return
@@ -296,19 +295,6 @@ you = Player(pimgs["down"], 8, (1280/2,300))
 for i in objects:
   objects[i].append(you)
 
-#MATTOON IMAGES
-mimgs = {"lean":img("MATLEAN.png"), "pfp":img("MATPFP.jpg"), "stare":img("MATSTARE.png"), "sup":img("MATSUP.png")}
-for i in mimgs:
-  mimgs[i] = scale(mimgs[i], (300, 300))
-mattoon = entity(mimgs["lean"],(0,200))
-curmat = 0
-
-objects[PLACE].append(mattoon)
-
-def changemattoon():
-  global curmat,mattoon
-  curmat = 0 if curmat == 3 else curmat+1
-  mattoon.changeimage(mimgs[list(mimgs.keys())[curmat]])
 
 def PIMG(thing):
   global pCUR, flip
@@ -328,12 +314,23 @@ def addme(thing: entity, PLACE = PLACE):
   global objects
   objects[PLACE].append(thing)
 
-def delme(thing: entity, PLACE = PLACE):
+def delme(thing, PLACE = PLACE):
   global objects
-  if thing in objects[PLACE]:
-    objects[PLACE].remove(thing)
+  if type(thing) == entity:
+    if thing in objects[PLACE]:
+      objects[PLACE].remove(thing)
+  else:
+    for i in thing:
+      if i in objects[PLACE]: objects[PLACE].remove(i)
 
-def text(text:str, slep = 30, afterwait = 2000): #max of 60
+def change(name:str, img: pygame.Surface):
+  """Change all objects with object.name == name to object.image = img"""
+  global objects
+  for i in objects[PLACE]:
+    if i.name == name:
+      i.image = img
+
+def text(text:str, slep = 30, afterwait = 2000, delete = True, selet = ''): #max of 60
   container = [entity(box((1000,300),(0,0,0)), (140,375), "txt"), entity(box((980,280), (255,255,255)), (150,385), "txt2")]
 
   for i in container: addme(i,PLACE)
@@ -349,18 +346,22 @@ def text(text:str, slep = 30, afterwait = 2000): #max of 60
     container.append(curt)
     addme(curt, PLACE)
     while len(text) > 0 and (len(t2) < 55 or text[0]==" ") and text[0] != '\n':
-      t2 += text[0]
+      t2 += text[0] if (selet == '' or not text[0].isdigit()) else "-> " if int(text[0])==selet else "   "
       text = text[1:]
       curt.image = font.render(t2, True, (0,0,0))
-      up()
-      sleep(slep)
+      if slep>0:
+        up()
+        sleep(slep)
     if len(text) > 0 and text[0] == '\n':
       sleep(slep*9)
       text = text[1:]
   sleep(afterwait)
   
-  for i in container: delme(i, PLACE)
-  up()
+  if delete:
+    for i in container: delme(i, PLACE)
+    up()
+  else:
+    return container
 
 
 def AWARD():#award cutscne
@@ -370,14 +371,86 @@ def SIGN(): #sign cutscene
   text("the sign reads:\nMATTOONS HOUSE", 25, 1000)
   met = entity(pygame.transform.rotate(img("MATSUP.png",(250,250)),-5),(500,10))
   addme(met)
+  change("door",img("door_open.jpg", (480,202)))
+  Sound.play("dooropen.mp3")
   up()
-  #door sound,door open png
-  sleep(2000)
+  sleep(1000)
   text("THATS ME!")
+  Sound.play("doorslam.mp3")
   delme(met)
+  change("door",img("door_closed.jpeg", (480,202)))
+  up()
+  sleep(500)
 
-def DOOR(): #door cutscene
-  print("DOOR")
+selector = 1
+def sel(max):
+  '''Returns a number for next position based on max of selector, or "enter" if you select'''
+  global selector
+  
+  while True:
+    k = pygame.key.get_pressed()
+    check_events()
+
+    if k[pygame.K_SPACE]:
+      return "enter"
+    if k[pygame.K_w] or k[pygame.K_UP]:
+      selector = selector-1 if selector > 1 else max
+      return 
+    if k[pygame.K_s] or k[pygame.K_DOWN]:
+      selector = selector+1 if selector<max else 1
+      return 
+    clock.tick(fps)
+
+
+mimgs = {"lean":img("MATLEAN.png", (500,500)), "pfp":img("MATPFP.jpg", (500,500)), "stare":img("MATSTARE.png", (500,500)), "sup":img("MATSUP.png", (500,500))}
+cutsceneing = False
+firstime = True
+
+def DOOR(): #door cutscene, TALK WITH MATTOON?
+  global objects,backing,cutsceneing,firstime,selector,selectormax
+  cutsceneing = True
+  g = objects[PLACE].copy()
+  matt = entity(mimgs["stare"],(1280-500-400, 0))
+  backing = color((145, 91, 55),WIDTH,HEIGHT)
+  objects[PLACE] = []
+  up()
+
+  if firstime:
+    sleep(500)
+    text("...")
+    text("its an empty room?")
+    text("how exciting...")
+    text("suddenly you hear footsteps...")
+    sleep(500)
+
+  addme(matt)
+  for i in range(1,256,2 if firstime else 6):
+    matt.image.set_alpha(i)
+    up()
+    sleep(40 if firstime else 25)
+
+  sleep(500 if firstime else 0)
+
+  selector = 1
+  
+  if firstime:
+    firstime = False
+
+    text("whats good?",30,1000)
+    texters = text("whats good?\n[Space to select, Arrow Keys to move selection]\n1 nothin\n2 idk",0,0,False, selector)
+    up()
+    while sel(2)!='enter':
+      delme(texters)
+      texters = text("whats good?\n1 nothin\n2 idk",0,200,False, selector)
+      up()
+
+
+
+  objects[PLACE] = g
+  up()
+  backing = color(colour,WIDTH,HEIGHT)
+
+
 interactibles = {'sign':SIGN,'award':AWARD, 'door': DOOR}
 INT_ME = []
 def interact(): #for interacting!!
@@ -438,11 +511,9 @@ clock = pygame.time.Clock()
 title("Mr Mattoonville")
 pygame.init()
 while True:
-  frame+=1
-  
 
   k = pygame.key.get_pressed()
-    
+
   if k[pygame.K_UP] or k[pygame.K_w]:
     you.move(up=True)
     PIMG("up")
@@ -455,22 +526,19 @@ while True:
   elif k[pygame.K_LEFT] or k[pygame.K_a]:
     you.move(left=True)
     PIMG("f")
-  elif k[pygame.K_0]:
-    changemattoon()
-  elif k[pygame.K_z]:
+  
+  if k[pygame.K_z]:
     interact()
   elif k[pygame.K_v]:
     text("hello hows it going you doing wel muffin man wading wow huh i did do i need a break yes i do need a breka and now herfen this wshould work ")
     
-  if (k[pygame.K_o] or k[pygame.K_p]):
-    HEIGHT+=3 if k[pygame.K_p] else -3
-    WIDTH+=3 if k[pygame.K_p] else -3
-    screensize(WIDTH,HEIGHT)
+  #if (k[pygame.K_o] or k[pygame.K_p]):
+  #  HEIGHT+=3 if k[pygame.K_p] else -3
+  #  WIDTH+=3 if k[pygame.K_p] else -3
+  #  screensize(WIDTH,HEIGHT)
   
   
   check_events()
   
   up() #passing nothing = full screen update
   lag_time = clock.tick(fps) / 1000 #fps = time since last frame (1 = its fine, can be used in frame dependant animation?)
-  
-  disable_time -= .5
