@@ -27,7 +27,7 @@ if WINDOWS:
 #add small map with interactable things and finally award somewhere
 
 
-
+music = True
 #---------------------------- funcs ----------------------------
 
 #------ main things ---------
@@ -89,70 +89,88 @@ def show(thing,where=(0,0),thingnightingi=None):
 
 
 #-------------------------- MAKING THE MAP STUFF find map --------------------------------------
-objects = {"home": [], '2nd' : []} #append all showable entities to me!!!!!!!
+#'' is if you clip out of bounds
+objects = {'':[], "home": [], '2nd' : [], '2ndsec':[], '3rd':[],'4th':[],'3rd2':[],'award':[],'asecret':[],'death':[]} #append all showable entities to me!!!!!!!
 PLACE = 'home'
-LOCERS = [0,0]
+LOCERS = [0,1] #row col
+maxtravel = [0,1]
 
 MAPPINGs = [
- ['home'],
- ['2nd']
+ [''      ,'home',''    ,''       , 'death'],
+ ['2ndsec','2nd' ,''    ,"asecret",      ""],
+ [''      ,"3rd" ,"3rd2","award"  ,      ''],
+ [''      ,"4th" ,''    ,''       ,      '']
 ]
+#asecret - presidential office, sign saying "a very familiar place.... looks royal"? 
 
 
 
+def che(x=0,y=0, use = False):
+  return not MAPPINGs[x + (LOCERS[0] if not use else 0)][y + (LOCERS[1] if not use else 0)] == ''
 
 def nextplace(dir):
-  global LOCERS,PLACE
-  p2 = PLACE
+  global LOCERS,PLACE,maxtravel
+  p2 = PLACE  
   if dir in ['up','down']:
-    LOCERS[0] += -1 if dir=='up' and LOCERS[0] > 0 else 1 if dir=='down' and LOCERS[0]!=len(MAPPINGs)-1 else 0
+    LOCERS[0] += -1 if dir=='up' and LOCERS[0] > 0 and che(-1) else 1 if dir=='down' and LOCERS[0]<len(MAPPINGs)-1 and che(1) else 0
   else:
-    LOCERS[1] += -1 if dir=='left' and LOCERS[1] != 0 else 1 if dir=='right' and LOCERS[1]!=len(MAPPINGs[LOCERS[1]])-1 else 0
+    LOCERS[1] += -1 if dir=='left' and LOCERS[1] > 0 and che(0,-1) else 1 if dir=='right' and LOCERS[1]<len(MAPPINGs[LOCERS[0]])-1 and che(0,1) else 0
   PLACE = MAPPINGs[LOCERS[0]][LOCERS[1]]
+  maxtravel = [max([LOCERS[0], maxtravel[0]]), max([LOCERS[1], maxtravel[1]])]
+  upminimap()
   return p2 != PLACE
 
 def obs():
-  tI = sorted([i.pos.top for i in objects[PLACE]])
+  tI = sorted([i.pos.bottom for i in objects[PLACE]])
   Objects = [0]*len(tI)
   for i in objects[PLACE]:
-    g = tI.index(i.pos.top)
+    g = tI.index(i.pos.bottom)
     Objects.insert(g,i)
     Objects.pop(Objects.index(0,g))
-    
-  for i in Objects: 
-    if i.name=='blek': 
-      Objects.remove(i) 
-      Objects.append(i)
-      break
-      
+  i=0
+  hit3,hitM = False,False
+  while i != len(Objects):
+    I = Objects[i] 
+    if (hit3 and I.name == '1') or (hitM and I.name=='M'): break
+    if I.name=='blek' or I.name in '13M': 
+      Objects.remove(I) 
+      Objects.append(I)
+      if I.name=='blek': break
+      hit3 = I.name=='3' or hit3
+      hitM = I.name=='M' or hitM
+      i-=1
+    i+=1  
   for i in Objects:
     show(i.image, i.pos)
     
 def fill(color,default=screen): #can take RGB too?
   default.fill(color)
 
-
 def up(thing=False):
   """Pass in either a pygame.Rect(x,y,width,height) or x,y,image"""
   if not thing:
-    show(backing,(0,0))
+    show(backing if PLACE != "2ndsec" else MERICA,(0,0))
     obs()
     pygame.display.update()
   else:
     pygame.display.update(thing if type(thing) == pygame.rect.Rect else pygame.Rect(thing[0],thing[1],thing[2].get_width(),thing[2].get_height()))
 
 #------- img things -------
+
+def scale(thing,coors):
+  return pygame.transform.scale(thing,coors)
+
 def img(name, size_cors = ""):
   x = pygame.image.load(file(name))
   return x if size_cors == '' else scale(x,size_cors)
+
+MERICA = img("office.png", (1280,720))
 
 def color(colo,wid=WIDTH,hei=HEIGHT):
   surf = pygame.Surface((wid,hei))
   surf.fill(colo)
   return surf
 
-def scale(thing,coors):
-  return pygame.transform.scale(thing,coors)
 
 def flip(thi,x_flip=True,y_flip=False):
   return pygame.transform.flip(thi,x_flip,y_flip)
@@ -186,14 +204,14 @@ class Music:
   @staticmethod
   def play(name, volume = 1, loops = -1, fadetime =0):
     """Set loops to -1 for inf"""
+    if not music: return
     pygame.mixer.music.load(file(name))
     pygame.mixer.music.set_volume(volume)
     pygame.mixer.music.play(loops, 0, fadetime)
   
   @staticmethod
   def fadeout(time):
-    pygame.mixer.fadeout(time)
-    Music.stop()
+    pygame.mixer.music.fadeout(time)
     
   
   @staticmethod
@@ -215,6 +233,7 @@ class Music:
 class Sound:
   @staticmethod
   def play(name,volume = 1):
+    if not music: return
     s = pygame.mixer.Sound(file(name))
     if volume!=1: s.set_volume(volume)
     pygame.mixer.Sound.play(s)
@@ -231,6 +250,7 @@ class entity:
     self.height = self.image.get_height()
     self.width = self.image.get_width()
     self.pos = image.get_rect().move(self.pos.left,self.pos.top)
+
 
 class Player:
   def __init__(self, image, speed, starting_cords = (0,0), name = "def"):
@@ -310,20 +330,20 @@ for ind,i in enumerate(pimgs):
     pimgs[i] = scale(pimgs[i], (64,64))
     
 pCUR = "down"
-flip = ''
+fliP = ''
 you = Player(pimgs["down"], 8, (1280/2,300))
 for i in objects:
   objects[i].append(you)
 
 
 def PIMG(thing):
-  global pCUR, flip
-  if pCUR == thing or thing == flip: return
+  global pCUR, fliP
+  if pCUR == thing or thing == fliP: return
   if thing=='f':
-    flip = 'f'
+    fliP = 'f'
     you.image = pimgs[pCUR+'f']
   else:
-    flip = ''
+    fliP = ''
     pCUR = thing if thing != '' else pCUR
     you.image = pimgs[pCUR]
 
@@ -339,6 +359,11 @@ def delme(thing, PLACE = PLACE):
   if type(thing) == entity:
     if thing in objects[PLACE]:
       objects[PLACE].remove(thing)
+  elif type(thing) == str:
+    for i in objects[PLACE]:
+      if i.name == thing: 
+        objects[PLACE].remove(i)
+        break
   else:
     for i in thing:
       if i in objects[PLACE]: objects[PLACE].remove(i)
@@ -350,11 +375,12 @@ def change(name:str, img: pygame.Surface):
     if i.name == name:
       i.image = img
 
-def text(text:str, slep = 30, afterwait = 2000, delete = True, selet = '', voiceline = False): #max of 60
+def text(text:str, slep = 25, afterwait = 2000, delete = True, selet = '', voiceline = False): #max of 60
   if voiceline: Sound.play(file(voiceline, True))
-  container = [entity(box((1000,300),(0,0,0)), (140,375), "txt"), entity(box((980,280), (255,255,255)), (150,385), "txt2")]
+  container = [entity(box((1000,300),(0,0,0)), (140,375), "1")]
+  container[0].image.blit(box((980,280), (255,255,255)),(10,10))
 
-  for i in container: addme(i,PLACE)
+  addme(container[0],PLACE)
   
   font = pygame.font.Font(file('determination.ttf'), 40)
 
@@ -363,7 +389,7 @@ def text(text:str, slep = 30, afterwait = 2000, delete = True, selet = '', voice
 
   while len(text) > 0:
     t2 = ""
-    curt = entity(font.render("", True, (0,0,0)), (160,(y:=y+50)), "txt3")
+    curt = entity(font.render("", True, (0,0,0)), (160,(y:=y+50)), "3")
     container.append(curt)
     addme(curt, PLACE)
     while len(text) > 0 and (len(t2) < 55 or text[0]==" ") and text[0] != '\n':
@@ -387,7 +413,12 @@ def text(text:str, slep = 30, afterwait = 2000, delete = True, selet = '', voice
 
 
 def AWARD():#award cutscne
-  pass
+  global hasmilk
+  text("its the award he was talking about!!!" if mission else "no way its a random shiny trophy")
+  delme("award", PLACE)
+  Sound.play("gotit.ogg")
+  hasmilk = True
+  text("going to need to bring this back..." if mission else "minus well take it i guess it couldnt hurt")
 
 def SIGN(): #sign cutscene
   text("the sign reads:\nMATTOONS HOUSE", 25, 1000)
@@ -413,13 +444,14 @@ def sel(max):
     check_events()
 
     if k[pygame.K_z]:
+      Sound.play("sel.wav")
       return "enter"
     if k[pygame.K_w] or k[pygame.K_UP]:
       selector = selector-1 if selector > 1 else max
-      return 
+      return
     if k[pygame.K_s] or k[pygame.K_DOWN]:
       selector = selector+1 if selector<max else 1
-      return 
+      return
     clock.tick(fps)
 
 
@@ -451,33 +483,45 @@ def fadeinto(nextscreen, fadetime = 2000, waittime = 1000, back = False):
 mission, hasmilk,anoynum = False, False, 1
 annoy = ["can i have money","can i have a selfie","can i skip class pls","can i have kidneys pls"]
 
-annoyresponses = [(("no are you just annoying or something",30,3000,False),("please scram",30,3000,False)),(("i know im cool but stop bugging me", 30, 3000, False),("youre not so slowly getting on my nerves okay", 30, 3000, False)),(("dude at this rate you should i dont get paid enough to deal with you", 30, 3000, False), ("if you come back here one more time and ask for something stupid you won't like whats next.", 30, 5000, False), ("for your own sake, forget your annoying side.",30, 4000, False)),(("....", 30, 2000, False), ("your talking privilages have been revoked.", 30, 3000, False),("bring me back my award. just find it. do not come back unless you have it. if you do, I have warned you enough for you to deserve what is coming. now go.", 40, 4000, False))]
+annoyresponses = [(("no are you just annoying or something",30,3000,False),("please scram",30,3000,False)),(("i know im cool but dont be bugging me", 30, 3000, False),("youre not so slowly getting on my nerves okay", 30, 3000, False)),(("dude at this rate you should i dont get paid enough to deal with you", 30, 3000, False), ("if you come back here one more time and ask for something stupid you won't like whats next.", 30, 4000, False), ("for your own sake, forget your annoying side.",30, 4000, False)),(("....", 30, 2000, False), ("your talking privilages have been revoked.", 30, 3000, False),("bring me back my award. just find it. do not come back unless you have it. if you do, I have warned you enough for you to deserve what is coming. now go.", 40, 4000, False))]
 #each response is a list of text options in a list
 #mat voice
+
 def goodending():
   pass
+def badending():
+  global objects
+  sleep(1000)
+  text("...")
+  text("youre gone.")
+  objects[PLACE] = []
+  text("was this what you intended?", 50, 1000)
+  quit("BAD ENDING")
+  
 
 def DOOR(): #door cutscene, TALK WITH MATTOON?
-  global objects,backing,cutsceneing,firstime,selector, mission,anoynum
+  global objects,backing,cutsceneing,firstime,selector, mission,anoynum,PLACE,LOCERS,you
+  Music.fadeout(500)
   cutsceneing = True
   DEATH = anoynum == 4 and not hasmilk
   g = objects[PLACE].copy()
   matt = entity(mimgs["stare"],(1280-500-400, 0))
   if DEATH:
     matt.image = selectfill(matt.image,-100,-100,-100)
-  backing = color((145, 91, 55) if not DEATH else (90,26,0),WIDTH,HEIGHT)
+  backing = color((145, 91, 55) if not DEATH else (25,0,0),WIDTH,HEIGHT)
   objects[PLACE] = []
   up()
 
+  text("...",25,1000)
+  
   if firstime:
-    sleep(500)
-    text("...")
     text("its an empty room?")
     text("how exciting...")
     text("suddenly you hear footsteps...")
     sleep(500)
+  
   if not DEATH:
-    #Music.play("musika.mp3", .3, -1, 10000)
+    Music.play("musika.mp3", .3, -1, 10000 if not firstime else 5000)
     pass
 
   addme(matt)
@@ -493,6 +537,10 @@ def DOOR(): #door cutscene, TALK WITH MATTOON?
     text("does it make you happy?\nnot listening, not caring.", 30, 1000)#mat voice
     text("you know what youve done, I wont be bothered to repeat it.", 30, 1000)#mat voice
     text("good luck.") #mat voice
+    LOCERS = [0,4]
+    upminimap()
+    you.pos.top = 600
+    g = objects["death"]
     fadeinto(g, 1000, 500, color((0,0,0),WIDTH,HEIGHT))
     up()
     return
@@ -569,15 +617,74 @@ def DOOR(): #door cutscene, TALK WITH MATTOON?
   
   Music.fadeout(2000)
   fadeinto(g, 1000, 0, color(colour,WIDTH,HEIGHT))
+  Music.play("cyber.mp3", .75, -1, 2000)
   up()
 
+def SIGN2():
+  Sound.play("eagle.mp3")
+  text("seems like a pretty royal office.")
+  text("an almost familiar sight...")
+def SIGN3():
+  text("have you gotten lost yet??",25,1000)
 
-interactibles = {'sign':SIGN,'award':AWARD, 'door': DOOR}
+nerdi = False
+def NERD():
+  global nerdi
+  if not nerdi:
+    nerdi=True
+    text("my friend said he was gonna show up soon...")
+    text("statistically he never shows, but theres always the most improbable option that has to be considered, and therefore i must refrain from realizing ive never had any friends and i am in fact mentally insane", 25, 3000)
+    text("let me sit here in peace please sir")
+  else:
+    text("one of these days", 25, 1000)
+
+def TREE():
+  text("an inconspicuous looking tree...")
+  text("what a big word") 
+
+def PHO():
+  text("looks like a dropped photo...")
+  text("looking sharp fr")
+
+joe = False
+def JOE():
+  global joe
+  if not joe:
+    text("haters will say im hacking")
+    text("oh yeah im not friends with that guy btw")
+    text("never have been")
+    joe = True
+  else:
+    text("(this dude is locked in)")
+  
+dcoun = 0
+def NUB():
+  global dcoun,you,pimgs
+  dcoun+=1
+  if dcoun == 1:
+    text("hey you too huh?")
+    text("theres really only one way out, you kinda did this to yourself")
+    text("thats why im here")
+  if dcoun == 2:
+    text("its better to slowly fade away instead of like dying")
+    text("feels better imo")
+  if dcoun == 3:
+    text("maybe next time listen to dan huh?")
+    text("hes like kinda the ruler of this place")
+  if dcoun == 4:
+    text("well it was good knowing you for a bit i guess")
+    text("one more time is all it takes")
+  for i in pimgs:
+    pimgs[i].set_alpha(pimgs[i].get_alpha() - 51)
+  up()
+  if you.image.get_alpha() < 10:
+    badending()
+interactibles = {'sign':SIGN,'award':AWARD, 'door': DOOR, 'sign2': SIGN2, 'sign3':SIGN3, 'nerd':NERD, 'tree':TREE, 'matphoto':PHO, 'joe': JOE,'noob':NUB} #find interactables
 INT_ME = []
 def interact(): #for interacting!!
   for i in INT_ME:
-    if touching(you, i, 'pass'):
-      interactibles[i.name]()
+    if touching(you, i, 'pass') and i in objects[PLACE]:
+      interactibles[i.name]() 
 
 def box(size, color):
   e = pygame.Surface(size)
@@ -596,10 +703,10 @@ def wall(size, coord = (0,0), colo = (0,0,0), PLACE = PLACE, name = 'wall'):
 #MAKING WALLS, find walls
 
 toMAKE = [ #size (can be img), coords, color (unused if size is img), place, name (wall = hitbox, NA = no hitbox [decor])
-  [img("door_closed.jpeg",(480,202)),(400,-2),(20, 20, 20), 'home', 'door'],
+  [img("door_closed.jpeg",(480,200)),(400,-2),(20, 20, 20), 'home', 'door'],
   [(480,183),(400,-3),(20, 20, 20), 'home', 'wall'],
-  [(520,201),(0,-1),(224, 219, 215), 'home', 'wall'],
-  [(520,201),(1280-520,-1),(224, 219, 215), 'home', 'wall'],
+  [(520,200),(0,-1),(224, 219, 215), 'home', 'wall'],
+  [(520,200),(1280-520,-1),(224, 219, 215), 'home', 'wall'],
   [(60,200),(120,0),(214, 209, 205), 'home', 'NA'],
   [(60,200),(1280-180,0),(214, 209, 205), 'home', 'NA'],
   [(60,200),(180,0),(200, 196, 191), 'home', 'NA'],
@@ -611,17 +718,50 @@ toMAKE = [ #size (can be img), coords, color (unused if size is img), place, nam
   [(60,200),(360,0),(214, 209, 205), 'home', 'NA'],
   [(60,200),(1280-420,0),(214, 209, 205), 'home', 'NA'],
   [img("sign.png",(100,100)),(1280-520,220),(214, 209, 205), 'home', 'sign'],
-  [(320, 180), (500,500), (96, 199, 28), '2nd',' wall'],
+  
+  [flip(img("tree.png",(350,350))),(700,300),(0, 0, 0), '2nd', 'tree'],
+  
+  [flip(img("sign.png",(100,100))),(392,408),(0, 0, 0), '2ndsec', 'sign2'],
+  
+  [],
+  [img("sign.png",(100,100)),(1000,500),(0, 0, 0), '3rd', 'sign3'],
+  [img("MATHANDSHAKE.jpg",(50,50)),(210,200),(0, 0, 0), '4th', 'matphoto'],
   [],
   [],
   [],
   [],
+  
+  [img("trophy.png",(200,200)), (1000,250), (66, 66, 66), 'award','award'],
+  [img("nerd.png",(200,150)), (100,250), (66, 66, 66), 'asecret','nerd'],
+  [img("joe.png",(150,100)), (1130,250), (66, 66, 66), 'asecret','joe'],
+  [],
+  [img("noob.png", (255,255)),(1280/2 - 125,0),(0,0,0), "death", 'noob'],
 ]
+#MAPPINGs = [
+# [''      ,'home',''    ,''       ], 'death'
+# ['2ndsec','2nd' ,''    ,"asecret"],
+# [''      ,"3rd" ,"3rd2","award"  ],
+# [''      ,"4th" ,''    ,''       ]
+#]
+minimap = entity(color((0,0,0),100,100),(1150,30),'M')
+def upminimap():
+  global minimap 
+  minimap.image = color((0,0,0),100,100)
+  if LOCERS[1] == 4: return
+  for row in range(len(MAPPINGs)):
+    for col in range(len(MAPPINGs[0])):
+      if ((row <= maxtravel[0] and 0 < col <= maxtravel[1]+1)\
+      or (0 < row <= maxtravel[0]+1 and col <= maxtravel[1])) and che(row,col,True):
+        minimap.image.blit(color((255,255,255) if row != LOCERS[0] or col != LOCERS[1] else (125,255,125),20,20), (10+20*col,10+20*row))
+upminimap()
 
 for i in toMAKE:
   if i!=[]:
     wall(i[0],i[1],i[2],i[3],i[4])
 
+for i in objects:
+  objects[i].append(you)
+  objects[i].append(minimap)
 
 clock = pygame.time.Clock()
 
@@ -629,8 +769,9 @@ clock = pygame.time.Clock()
 
 
 #----------------------------------- MAIN GAMEEEEEEEEEE -----------------------------------
-title("Mr Mattoonville")
 pygame.init()
+title("Mr Mattoonville")
+Music.play("cyber.mp3", .75, -1, 1000)
 while True:
 
   k = pygame.key.get_pressed()
@@ -650,8 +791,11 @@ while True:
   
   if k[pygame.K_z]:
     interact()
+  if k[pygame.K_p]:
+    Music.fadeout(1000)
+    music = False
   elif k[pygame.K_v]:
-    text("hello hows it going you doing wel muffin man wading wow huh i did do i need a break yes i do need a breka and now herfen this wshould work ")
+    print(you.pos)
     
   #if (k[pygame.K_o] or k[pygame.K_p]):
   #  HEIGHT+=3 if k[pygame.K_p] else -3
@@ -663,3 +807,4 @@ while True:
   
   up() #passing nothing = full screen update
   lag_time = clock.tick(fps) / 1000 #fps = time since last frame (1 = its fine, can be used in frame dependant animation?)
+
