@@ -364,13 +364,16 @@ def delme(thing, PLACE = PLACE):
     if thing in objects[PLACE]:
       objects[PLACE].remove(thing)
   elif type(thing) == str:
-    for i in objects[PLACE]:
-      if i.name == thing: 
-        objects[PLACE].remove(i)
-        break
+    if (i:=getme(thing)):
+      objects[PLACE].remove(i)
   else:
     for i in thing:
       if i in objects[PLACE]: objects[PLACE].remove(i)
+
+def getme(name:str):
+  for i in objects[PLACE]:
+    if i.name == name: return i
+  return None
 
 def change(name:str, img: pygame.Surface):
   """Change all objects with object.name == name to object.image = img"""
@@ -386,20 +389,19 @@ def text(text:str, slep = 25, afterwait = 2000, delete = True, selet = '', voice
 
   addme(container[0],PLACE)
   
-  font = pygame.font.Font(file('determination.ttf'), 40)
-  
   t2 = ""
   y = 340
 
   while len(text) > 0:
     t2 = ""
-    curt = entity(font.render("", True, (0,0,0)), (160,(y:=y+50)), "3")
+    if text[0]==' ': text = text[1:]
+    curt = entity(BIGfont.render("", True, (0,0,0)), (160,(y:=y+50)), "3")
     container.append(curt)
     addme(curt, PLACE)
-    while len(text) > 0 and (len(t2) < 55 or text[0]==" ") and text[0] != '\n':
+    while len(text) > 0 and (len(t2) < 55 or text[0]!=" ") and text[0] != '\n':
       t2 += text[0] if (selet == '' or not text[0].isdigit()) else "-> " if int(text[0])==selet else "   "
       text = text[1:]
-      curt.image = font.render(t2, True, (0,0,0))
+      curt.image = BIGfont.render(t2, True, (0,0,0))
       if slep>0:
         up()
         sleep(slep)
@@ -415,6 +417,33 @@ def text(text:str, slep = 25, afterwait = 2000, delete = True, selet = '', voice
   else:
     return container
 
+def text2(text, slep, afterwait, voiceline = False): #(620, 10)
+  if voiceline: Sound.play(file(voiceline, True))
+  
+  container = []
+
+  t2 = ""
+  y = -5
+
+  while len(text) > 0:
+    t2 = ""
+    if text[0]==' ': text = text[1:]
+    curt = entity(font3.render("", True, (0,0,0)), (630,(y:=y+25)), "3")
+    container.append(curt)
+    addme(curt, PLACE)
+    while len(text) > 0 and (len(t2) < 30 or text[0]!=" ") and text[0] != '\n':
+      t2 += text[0]
+      text = text[1:]
+      curt.image = font3.render(t2, True, (0,0,0))
+      if slep>0:
+        time.sleep(slep/1000)
+    if len(text) > 0 and text[0] == '\n':
+      time.sleep(slep/1000*9)
+      text = text[1:]
+  
+  time.sleep(afterwait/1000)
+  for i in container: delme(i, PLACE)
+  return 
 
 def AWARD():#award cutscne
   global hasmilk
@@ -461,7 +490,6 @@ def sel(max):
 
 mimgs = {"lean":img("MATLEAN.png", (500,500)), "pfp":img("MATPFP.jpg", (500,500)), "stare":img("MATSTARE.png", (500,500)), "sup":img("MATSUP.png", (500,500))}
 cutsceneing = False
-firstime = True
 
 
 def fadeinto(nextscreen, fadetime = 2000, waittime = 1000, back = False, BOSS = False):
@@ -478,8 +506,8 @@ def fadeinto(nextscreen, fadetime = 2000, waittime = 1000, back = False, BOSS = 
   if back: backing = back
   objects[PLACE] = nextscreen
   if BOSS:
-    fill((255,255,255),blek)
-    Sound.play("boss.mp3") #find sound
+    fill((255,255,255),blek.image)
+    Sound.play("sel.wav") #find sound, CHANGE TO boss.mp3
   objects[PLACE].append(blek)
   for i in range(255,-1,-5):
     blek.image.set_alpha(i)
@@ -504,11 +532,44 @@ def badending():
   objects[PLACE] = []
   text("was this what you intended?", 50, 1000)
   quit("BAD ENDING")
+
+def dia(type = 'start', step = 2):
+  global objects
+  mat,dia = getme("MAT"), getme("1")
+  JI = range(1 if 's' in type else 255, 256 if 's' in type else -1, step if 's' in type else -1*step)
+  for i in JI:
+    mat.pos.left = 550 - 200 * sin(i/2.84)
+    dia.image.set_alpha(i)
+    time.sleep(.01)
+  if 'e' in type: dia.image.set_alpha(0)
   
+
+
+
+def THEFINALE(): #MATTOON BOSS FIGHT!!, IT WORKS, JUST DONT UPDATE SCREEN AND USE TIME.SLEEP!!!!!!!!
+  global you,objects
+  time.sleep(2)
+  dia('start')
+  text2("I aways knew what kind of person you were", 25, 1000)
+  text2("a stealer of good, an embodiment of bad", 25, 1000)
+  text2("an agreed upon outliner", 25, 1000)
+  #weapons/health appear
+  text2("someone with no place in this world", 25, 1000)
+  dia('end')
+  #attack 1, mattoon goes to a random spot above the box, changes image and drops a math symbol/coding symbol or something downwards?
+  #maybe make the image a random 20x20 from like a 100x100 image of different things?
+
+  #attack 2, out of bounds
+
+  #attack 3, finale, mr mattoon like rushes at you, you need to get him his murray award or else you just die
+
+
+  
+firstime = False #testing
 
 def DOOR(): #door cutscene, TALK WITH MATTOON?
   global objects,backing,cutsceneing,firstime,selector, mission,anoynum,PLACE,LOCERS,you,anoy2
-  BOSS = False
+  BOSS = True #testing
   Music.fadeout(500)
   cutsceneing = True
   DEATH = anoynum == 4 and not hasmilk
@@ -523,9 +584,9 @@ def DOOR(): #door cutscene, TALK WITH MATTOON?
   text("...",25,1000)
   
   if firstime:
-    text("its an empty room?")
-    text("how exciting...")
-    text("suddenly you hear footsteps...")
+    text("its an empty room?") #mat voice
+    text("how exciting...") #mat voice
+    text("suddenly you hear footsteps...") #mat voice
     sleep(500)
   
   if not DEATH:
@@ -541,12 +602,12 @@ def DOOR(): #door cutscene, TALK WITH MATTOON?
   sleep(500 if firstime else 3000 if DEATH else 0)
 
   if firstime and hasmilk:
-    text("wait dude")
-    text("is that my trophy?????")
-    text("im kidding i know it is")
-    text("may if you actually talked to me beforehand i would give you a choice")
-    text("but for now thats mine")
-    text("bye bye!")
+    text("wait dude") #mat voice
+    text("is that my trophy?????") #mat voice
+    text("im kidding i know it is") #mat voice
+    text("may if you actually talked to me beforehand i would give you a choice") #mat voice
+    text("but for now thats mine") #mat voice
+    text("bye bye!") #mat voice
     goodending()
 
   if DEATH:
@@ -576,7 +637,7 @@ def DOOR(): #door cutscene, TALK WITH MATTOON?
     texters = text("whats good bro?\n[Z to select, Arrow Keys to move selection]\n1 nothin\n2 idk",0,0,False, selector)
     while sel(2)!='enter':
       delme(texters)
-      texters = text("whats good bro?\n[Z to select, Arrow Keys to move selection]\n1 nothin\n2 idk",0,100,False, selector)
+      texters = text("whats good bro?\n[Z to select, Arrow Keys to move selection]\n1 nothin\n2 idk",0,150,False, selector)
     delme(texters)
     text("well thats cool but anyway") #mat voice
   selector = 1
@@ -587,14 +648,14 @@ def DOOR(): #door cutscene, TALK WITH MATTOON?
       texters = text("what do you want?\n1 nothing what do you want\n2 "+annoy[anoynum]+"\n3 leave",0,0,False, selector)
       while sel(3)!='enter':
         delme(texters)
-        texters = text("what do you want?\n1 nothing what do you want\n2 "+annoy[anoynum]+"\n3 leave",0,100,False, selector)
+        texters = text("what do you want?\n1 nothing what do you want\n2 "+annoy[anoynum]+"\n3 leave",0,150,False, selector)
       delme(texters)
       if selector == 3: continue
       if selector == 1:
         text("actually thanks for asking")#mat voice
         text("i won this award but the person who gave it to me just kinda wasnt there")#mat voice
         text("since you kind of look like him, can you get it for me? i think its somewhere south of here, youll probably be able to figure it out.")#mat voice
-        text("that was rhetorical by the way thank you youre going to get it for me bye")
+        text("that was rhetorical by the way thank you youre going to get it for me bye")#mat voice
         mission = True
       if selector == 2:
         if anoynum == 3:
@@ -611,7 +672,7 @@ def DOOR(): #door cutscene, TALK WITH MATTOON?
     texters = text("hey did you get my award yet?\n1 yep\n2 nerp",0,0,False, selector)
     while sel(2)!='enter':
       delme(texters)
-      texters = text("hey did you get my award yet?\n1 yep\n2 nerp",0,100,False, selector)
+      texters = text("hey did you get my award yet?\n1 yep\n2 nerp",0,150,False, selector)
     delme(texters)
     if selector == 1:
       if hasmilk:
@@ -625,26 +686,30 @@ def DOOR(): #door cutscene, TALK WITH MATTOON?
         if anoy2 == 1:
           text("oh yeah that big yellow shiny thing you have is not my award alright you better say yes next time") #mat voice
         else:
-          text("yeah youre done")
+          text("yeah youre done") #mat voice
           BOSS = True
 
         anoy2+=1
       else:
         text("ok")#mat voice
 
-    
-
-
-
 
   Music.fadeout(2000)
   if BOSS:
-    you.pos.top = 600
-    g = [you,entity(img("MATLEAN.png",(100,100)), (680,50), "MAT")]
-    for i in [[(600,20), (100,100)], [(20,360), (100,120)], [(600,20), (100,480)],[(20,360),(700,100)]]:
-      g.append(entity(color((0,0,0),i[0][0],i[0][1]),i[0],"wall")) #TEST THIS
+    you.pos.top = 300
+    g = [you,entity(img("MATLEAN.png",(200,200)), (550,0), "MAT"),entity(color((0,0,0), 420,180), (620, 10), "1"), entity(color((0,0,0), 1,1), (620, 10), "3")]
+
+    #come here, blit the top onto entity[1]
+    g[2].image.blit(color((255,255,255), 410,170),(5,5))
+    g[2].image.set_alpha(0)
+
+    #size, coords
+    for i in [[(800,20), (220,200)], [(20,360), (220,220)], [(800,20), (220,580)],[(20,360),(1000,220)]]:
+      g.append(entity(color((0,0,0),i[0][0],i[0][1]),i[1],"wall")) #TEST THIS
   fadeinto(g, 1000, 0, color(colour,WIDTH,HEIGHT),BOSS)
-  Music.play("cyber.mp3" if not BOSS else "bosssong.mp3", .75, -1, 2000) #find sound
+  Music.play("cyber.mp3" if not BOSS else "cyber.mp3", .75, -1, 2000) #find sound, CHANGE TO bosssong.mp3
+  if BOSS:
+    Thread(target = THEFINALE).start()
   up()
 
 def SIGN2():
@@ -713,11 +778,12 @@ maming = False
 def MAM():
   global maming 
   if not maming:
+    maming = True
     text("if you get bros trophy, dont lie to him and say you dont got it")
-    text("that stuff pisses him off he might like become a boss fight or something idk")
-    text("bro will have you for lunch")
+    text("that stuff pisses him off he might like become a boss  fight or something idk")
+    text("brother will have you for lunch")
   else:
-    text("just dont say no when bro asks you if you have the trophy alright")
+    text("just dont say no when he asks you if you have the trophy alright")
 interactibles = {'sign':SIGN,'award':AWARD, 'door': DOOR, 'sign2': SIGN2, 'sign3':SIGN3, 'nerd':NERD, 'tree':TREE, 'matphoto':PHO, 'joe': JOE,'noob':NUB,'what':WHAT, 'mam':MAM} #find interactables
 INT_ME = []
 def interact(): #for interacting!!
@@ -810,14 +876,15 @@ clock = pygame.time.Clock()
 
 #----------------------------------- MAIN GAMEEEEEEEEEE -----------------------------------
 pygame.init()
+BIGfont = pygame.font.Font(file('determination.ttf'), 40)
 title("Mr Mattoonville")
 font = pygame.font.Font(file('determination.ttf'), 80)
 font2 = pygame.font.Font(file('determination.ttf'), 45)
 font3 = pygame.font.Font(file('determination.ttf'), 30)
-Mtexts = [[font.render("Welcome to Mattoonville!", True, (255,255,255)),[350,100]],[font2.render("Press 'z' to interact with objects, Arrow keys/WASD to move!", True, (0,0,0)), [120,300]]\
-          ,[font2.render("Talk to Dan Mattoon, and get him his prize!!",True,(0,0,0)),[300,400]],[font3.render("(or face consequences!!!)",True,(0,0,0)),[400,500]]]
+Mtexts = [[font.render("Welcome to Mattoonville!", True, (255,255,255)),[350,100]],[font2.render("Press 'z' to interact, Arrow keys/WASD to move, P to toggle sound!", True, (0,0,0)), [120,250]]\
+          ,[font2.render("Talk to Dan Mattoon, and get him his prize!!",True,(0,0,0)),[300,350]],[font3.render("(or face consequences!!!)",True,(0,0,0)),[400,450]], [font.render("Space to continue!", True, (255,255,255)),[350,525]]]
 #[text, start_pos],[...]...
-#main menu
+#find main menu
 backing = color((160,0,173))
 snum = 0
 startings = []
@@ -832,9 +899,10 @@ objects[PLACE] = []
 for i in Mtexts:
   objects[PLACE].append(i)
 while not F[pygame.K_SPACE]:
-  snum += 1
+  snum+=1
+  fill((160,200*sin(snum/4%180),173), backing)
   for ind,i in enumerate(Mtexts):
-    i.pos.left = startings[ind] + sin(snum)*(20-(10+ind if ind!=0 else 0))
+    i.pos.left = startings[ind] + (sin(snum)*20 if ind in [0, 4] else 0)
   check_events()
   up()
   F = pygame.key.get_pressed()
