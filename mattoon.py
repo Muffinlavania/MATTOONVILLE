@@ -1,4 +1,4 @@
-import pygame,time,sys,ctypes,math,os,threading
+import pygame,time,sys,ctypes,math,os,threading,random
 from threading import Thread
 from pygame.locals import *
 
@@ -111,6 +111,8 @@ MAPPINGs = [
 def che(x=0,y=0, use = False):
   return not MAPPINGs[x + (LOCERS[0] if not use else 0)][y + (LOCERS[1] if not use else 0)] == ''
 
+health=100
+
 def nextplace(dir):
   global LOCERS,PLACE,maxtravel
   p2 = PLACE
@@ -144,6 +146,11 @@ def obs():
       i-=1
     i+=1
   for i in Objects:
+    if i.name == 'health':
+      bar_red.image.set_alpha(i.image.get_alpha())
+      bar_green.image.set_alpha(i.image.get_alpha())
+      show(bar_red.image, bar_red.pos)
+      show(bar_green.image, bar_red.pos, (0,0,(round(140*(health/100))),40))
     show(i.image, i.pos)
     
 def fill(color,default=screen): #can take RGB too?
@@ -236,7 +243,7 @@ class Sound:
   @staticmethod
   def play(name,volume = 1):
     if not music: return
-    s = pygame.mixer.Sound(file(name))
+    s = pygame.mixer.Sound(file(name) if '/' not in name else name)
     if volume!=1: s.set_volume(volume)
     pygame.mixer.Sound.play(s)
   
@@ -309,6 +316,8 @@ def touching(MOVER:entity,WALL:entity,paddingtop=0,paddingsides=0): #both entite
 
   return False
 
+bar_red = entity(color((209, 82, 79),140,40),(56,605))
+bar_green = entity(color((24, 207, 0),140,40),(56,605))
 
 
 
@@ -324,7 +333,7 @@ BIGGER = img("players.png").convert_alpha()
 pimgs = {"upf": pygame.Surface((256, 256)).convert_alpha(), "down": pygame.Surface((256, 256)).convert_alpha(),"up":pygame.Surface((256, 256)).convert_alpha(),"downf":pygame.Surface((256, 256)).convert_alpha()}
 
 for i in pimgs: pimgs[i].fill((255,255,255)) #prep them, without this you just get black!!
-  
+
 for ind,i in enumerate(pimgs):
   if ind < 2:
     pimgs[i].blit(BIGGER, (0, 0), (0, ind*256, 256, 256), BLEND_RGBA_MULT)
@@ -335,9 +344,11 @@ for ind,i in enumerate(pimgs):
     
 pCUR = "down"
 fliP = ''
+
 you = Player(pimgs["down"], 8, (1280/2,300))
 for i in objects:
   objects[i].append(you)
+
 
 
 def PIMG(thing):
@@ -417,7 +428,7 @@ def text(text:str, slep = 25, afterwait = 2000, delete = True, selet = '', voice
   else:
     return container
 
-def text2(text, slep, afterwait, voiceline = False): #(620, 10)
+def text2(text, slep=25, afterwait=1000, voiceline = False): #(620, 10)
   if voiceline: Sound.play(file(voiceline, True))
   
   container = []
@@ -460,7 +471,7 @@ def SIGN(): #sign cutscene
   change("door",img("door_open.jpg", (480,202)))
   up()
   sleep(1000)
-  text("THATS ME!", 30, 2000, True, '', False) #mat voice
+  text("THATS ME!", 30, 500, True, '', "thatsme.mp3") #mat voice
   Sound.play("doorslam.mp3")
   delme(met)
   change("door",img("door_closed.jpeg", (480,202)))
@@ -486,10 +497,6 @@ def sel(max):
       selector = selector+1 if selector<max else 1
       return
     clock.tick(fps)
-
-
-mimgs = {"lean":img("MATLEAN.png", (500,500)), "pfp":img("MATPFP.jpg", (500,500)), "stare":img("MATSTARE.png", (500,500)), "sup":img("MATSUP.png", (500,500))}
-cutsceneing = False
 
 
 def fadeinto(nextscreen, fadetime = 2000, waittime = 1000, back = False, BOSS = False):
@@ -543,38 +550,114 @@ def dia(type = 'start', step = 2):
     time.sleep(.01)
   if 'e' in type: dia.image.set_alpha(0)
   
-
-
-
+SAMDIED = False
+def mover(thing):
+  global health,SAMDIED 
+  count = 0
+  addme(thing)
+  while thing.pos.top < HEIGHT:
+    if SAMDIED: 
+      delme(thing)
+      return
+    count += 1
+    thing.pos.top += 5
+    time.sleep(.02)
+    if count%4:
+      if touching(thing,you,'pass'):
+        health-=2
+        if health<=0: SAMDIED = True 
+        
+  delme(thing)
+BOSSEND = False
 def THEFINALE(): #MATTOON BOSS FIGHT!!, IT WORKS, JUST DONT UPDATE SCREEN AND USE TIME.SLEEP!!!!!!!!
-  global you,objects
+  global you,objects,BOSSEND,backing 
+  backing = color((200,0,30))
   time.sleep(2)
   dia('start')
-  text2("I aways knew what kind of person you were", 25, 1000)
+  text2("i aways knew what kind of person you were", 25, 1000)
   text2("a stealer of good, an embodiment of bad", 25, 1000)
   text2("an agreed upon outliner", 25, 1000)
-  #weapons/health appear
-  text2("someone with no place in this world", 25, 1000)
+  objects[PLACE].append(the:=entity(img("healthbar.png", (152,50)), (50,600), 'health'))
+  for i in range(0,256,2):
+    the.image.set_alpha(i)
+    time.sleep(.01)
+  Music.fadeout(1500)
+  text2("a man with no place in this world", 25, 1000)
   dia('end')
+  Music.play("FIGHTME.ogg", .8, -1, 2000)
   #attack 1, mattoon goes to a random spot above the box, changes image and drops a math symbol/coding symbol or something downwards?
   #maybe make the image a random 20x20 from like a 100x100 image of different things?
+  all = img('symbs.jpg', (100,100)).convert_alpha()
+  weapons = [pygame.Surface((25,25)).convert_alpha() for i in range(16)]
+  for x in range(100):
+    for y in range(100):
+      if all.get_at((x,y))[0] >= 200:
+        all.set_at((x, y), pygame.Color(0,0,0,0)) #set things
+        
+  for i in weapons: i.fill((255,255,255,0))
 
+  for i,ind in enumerate(weapons):
+    ind.blit(all, (0, 0), (i//4*25, i%4*25, 25, 25))
+  
+  met = getme("MAT")
+  
+  for i in range(250):
+    if SAMDIED:
+      delme(met)
+      return
+    randompos = random.randint(175,900)
+    old = met.pos.left
+    difference = randompos - met.pos.left
+    for j in range(0,91,2):
+      met.pos.left =  old + difference * sin(j)
+      if i<22: time.sleep(.01)
+      else: pass
+    met.image = img("MATSUP.png",(200,200))
+    Thread(target = mover, args = (entity(random.choice(weapons), (randompos+87,100), 'ow'), )).start()
+    time.sleep(.1 if i<22 else .05)
+    met.image = img("MATLEAN.png",(200,200))
+  old,difference = met.pos.left, 550 - met.pos.left
+  time.sleep(5)
+  
+  for j in range(0,91,2):
+    met.pos.left =  old + difference * sin(j)
+    time.sleep(.01)
+  Music.fadeout(2000)
+  dia('start',1)
+  text2("so you survived???")    
+  text2(".....")
+  text2("wait")
+  sam = entity(img("muraward.png", (100,100)), (200, 50), 'SAMMMMMMMMMMMMMMMM')
+  addme(sam)
+  met.image = scale(met.image, (300,200))
+  text2("WHAT IS THAT")
+  text2("NO SHOT BRO",25,2000)
+  delme(sam)
+  met.image = img("matmurr.png", (200,200))
+  text2("I FORGIVE YOU THIS IS BETTER ACTUALLY")
+  text2("see you never man")
+  dia('end', 1)
+  for i in range(255,-1,-2):
+    met.image.set_alpha(i)
+    time.sleep(.01)
+  delme(met)
+  time.sleep(5)
+  BOSSEND = True
   #attack 2, out of bounds
 
   #attack 3, finale, mr mattoon like rushes at you, you need to get him his murray award or else you just die
 
 
   
-firstime = False #testing
+firstime = True
 
 def DOOR(): #door cutscene, TALK WITH MATTOON?
-  global objects,backing,cutsceneing,firstime,selector, mission,anoynum,PLACE,LOCERS,you,anoy2
-  BOSS = True #testing
+  global objects,backing,firstime,selector, mission,anoynum,PLACE,LOCERS,you,anoy2
+  BOSS = False 
   Music.fadeout(500)
-  cutsceneing = True
   DEATH = anoynum == 4 and not hasmilk
   g = objects[PLACE].copy()
-  matt = entity(mimgs["stare"],(1280-500-400, 0))
+  matt = entity(img("MATSTARE.png", (500,500)),(1280-500-400, 0))
   if DEATH:
     matt.image = selectfill(matt.image,-100,-100,-100)
   backing = color((145, 91, 55) if not DEATH else (25,0,0),WIDTH,HEIGHT)
@@ -584,9 +667,9 @@ def DOOR(): #door cutscene, TALK WITH MATTOON?
   text("...",25,1000)
   
   if firstime:
-    text("its an empty room?") #mat voice
-    text("how exciting...") #mat voice
-    text("suddenly you hear footsteps...") #mat voice
+    text("its an empty room?") 
+    text("how exciting...") 
+    text("suddenly you hear footsteps...") 
     sleep(500)
   
   if not DEATH:
@@ -633,7 +716,7 @@ def DOOR(): #door cutscene, TALK WITH MATTOON?
   if firstime:
     firstime = False
 
-    text("whats good bro?",30,500) #mat voice
+    text("whats good bro?",30,500, True, '', "whatsgoodbro.mp3") #mat voice
     texters = text("whats good bro?\n[Z to select, Arrow Keys to move selection]\n1 nothin\n2 idk",0,0,False, selector)
     while sel(2)!='enter':
       delme(texters)
@@ -699,15 +782,14 @@ def DOOR(): #door cutscene, TALK WITH MATTOON?
     you.pos.top = 300
     g = [you,entity(img("MATLEAN.png",(200,200)), (550,0), "MAT"),entity(color((0,0,0), 420,180), (620, 10), "1"), entity(color((0,0,0), 1,1), (620, 10), "3")]
 
-    #come here, blit the top onto entity[1]
     g[2].image.blit(color((255,255,255), 410,170),(5,5))
     g[2].image.set_alpha(0)
 
     #size, coords
     for i in [[(800,20), (220,200)], [(20,360), (220,220)], [(800,20), (220,580)],[(20,360),(1000,220)]]:
-      g.append(entity(color((0,0,0),i[0][0],i[0][1]),i[1],"wall")) #TEST THIS
+      g.append(entity(color((0,0,0),i[0][0],i[0][1]),i[1],"wall"))
   fadeinto(g, 1000, 0, color(colour,WIDTH,HEIGHT),BOSS)
-  Music.play("cyber.mp3" if not BOSS else "cyber.mp3", .75, -1, 2000) #find sound, CHANGE TO bosssong.mp3
+  Music.play("cyber.mp3" if not BOSS else "unused.ogg", .75, -1, 2000) #find sound, CHANGE TO bosssong.mp3
   if BOSS:
     Thread(target = THEFINALE).start()
   up()
@@ -729,11 +811,17 @@ def NERD():
     text("let me sit here in peace please sir")
   else:
     text("one of these days", 25, 1000)
-
+TREEE = False
 def TREE():
-  text("an inconspicuous looking tree...")
-  text("what a big word") 
-
+  global TREEE
+  if not TREEE:
+    text("an inconspicuous looking tree...")
+    text("what a big word") 
+    TREEE = True
+  else:
+    text("upon further inspection, a note lays by the stump...")
+    text("it reads:\n- hi sam\n- how r u")
+    
 def PHO():
   text("looks like a dropped photo...")
   text("looking sharp fr")
@@ -784,7 +872,10 @@ def MAM():
     text("brother will have you for lunch")
   else:
     text("just dont say no when he asks you if you have the trophy alright")
-interactibles = {'sign':SIGN,'award':AWARD, 'door': DOOR, 'sign2': SIGN2, 'sign3':SIGN3, 'nerd':NERD, 'tree':TREE, 'matphoto':PHO, 'joe': JOE,'noob':NUB,'what':WHAT, 'mam':MAM} #find interactables
+    
+def MUR():
+  text("hi sam youre vute")
+interactibles = {'sign':SIGN,'award':AWARD, 'door': DOOR, 'sign2': SIGN2, 'sign3':SIGN3, 'nerd':NERD, 'tree':TREE, 'matphoto':PHO, 'joe': JOE,'noob':NUB,'what':WHAT, 'mam':MAM,'SAM':MUR} #find interactables
 INT_ME = []
 def interact(): #for interacting!!
   for i in INT_ME:
@@ -832,10 +923,6 @@ toMAKE = [ #size (can be img), coords, color (unused if size is img), place, nam
   [img("sign.png",(100,100)),(1000,500),(0, 0, 0), '3rd', 'sign3'],
   [img("MATHANDSHAKE.jpg",(50,50)),(210,200),(0, 0, 0), '4th', 'matphoto'],
   [img("mam.png",(64,64)),(900,400),(0, 0, 0), '3rd2', 'mam'],
-  [],
-  [],
-  [],
-  [],
   
   [img("trophy.png",(200,200)), (1000,250), (66, 66, 66), 'award','award'],
   [img("nerd.png",(200,150)), (100,250), (66, 66, 66), 'asecret','nerd'],
@@ -883,8 +970,7 @@ font2 = pygame.font.Font(file('determination.ttf'), 45)
 font3 = pygame.font.Font(file('determination.ttf'), 30)
 Mtexts = [[font.render("Welcome to Mattoonville!", True, (255,255,255)),[350,100]],[font2.render("Press 'z' to interact, Arrow keys/WASD to move, P to toggle sound!", True, (0,0,0)), [120,250]]\
           ,[font2.render("Talk to Dan Mattoon, and get him his prize!!",True,(0,0,0)),[300,350]],[font3.render("(or face consequences!!!)",True,(0,0,0)),[400,450]], [font.render("Space to continue!", True, (255,255,255)),[350,525]]]
-#[text, start_pos],[...]...
-#find main menu
+
 backing = color((160,0,173))
 snum = 0
 startings = []
@@ -898,6 +984,7 @@ copY = objects[PLACE].copy()
 objects[PLACE] = []
 for i in Mtexts:
   objects[PLACE].append(i)
+Music.play("mainmenu.ogg", .75, -1, 1000)
 while not F[pygame.K_SPACE]:
   snum+=1
   fill((160,200*sin(snum/4%180),173), backing)
@@ -907,12 +994,14 @@ while not F[pygame.K_SPACE]:
   up()
   F = pygame.key.get_pressed()
   clock.tick(fps)
-
+Music.fadeout(1500)
 fadeinto(copY,1000,0,color(colour))
 
 
 Music.play("cyber.mp3", .75, -1, 1000)
 before = False
+timer = 0
+
 while True:
 
   k = pygame.key.get_pressed()
@@ -933,19 +1022,29 @@ while True:
   if k[pygame.K_z]:
     interact()
   if k[pygame.K_p]:
-    Music.fadeout(1000)
-    music = False
-  elif k[pygame.K_v]:
-    print(you.pos)
-    
-  #if (k[pygame.K_o] or k[pygame.K_p]):
-  #  HEIGHT+=3 if k[pygame.K_p] else -3
-  #  WIDTH+=3 if k[pygame.K_p] else -3
-  #  screensize(WIDTH,HEIGHT)
-  
-  
+    if timer<0:
+      music = not music
+      timer = 30
+      if not music:
+        Music.fadeout(1000)
+      else:
+        Music.play("cyber.mp3", .75, -1, 1000)
+        
   check_events()
-  
+  if BOSSEND:
+    quit("BOSS ENDING!!!! MR MATTOON GOT HIS MURRAY AWARD!!!!!! congrats :)")
+  if SAMDIED:
+    backing = color((0,0,0))
+    objects[PLACE] = [you]
+    up()
+    sleep(100)
+    Music.stop()
+    up()
+    sleep(1000)
+    text("its over")
+    text("better luck next time!!!")
+    quit("you are not a pro gamer")
+  timer -= 1
   up() #passing nothing = full screen update
   lag_time = clock.tick(fps) / 1000 #fps = time since last frame (1 = its fine, can be used in frame dependant animation?)
 
